@@ -407,7 +407,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v1.2';
+const CACHE_VER='v1.4';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -807,7 +807,7 @@ function mkCharts(items){
 
 const TCOLS=[
   ['期間','_k','k',''],
-  ['広告費','ad_total','yen','c-orange'],['ROAS','roas','roas','c-orange'],['IMP','ad_imp','num','c-orange'],['Click','ad_click','num','c-orange'],
+  ['売上','sales','yen','c-orange'],['ROAS','roas','roas','c-orange'],['広告費','ad_total','yen','c-orange'],
   ['LINE登録','line_reg','num','c-blue'],['AW申込','aw_apply','num','c-blue'],
   ['AW申込率','aw_apply_r','pct','c-blue'],['AW消化','aw_consumed','num','c-blue'],
   ['AW着席','aw_attend','num','c-blue'],['AW着席率','aw_attend_r','pct','c-blue'],
@@ -816,9 +816,9 @@ const TCOLS=[
   ['着席CVR','reserv_seat_r','pct','c-purple'],
   ['成約','contract','num','c-green'],['成約予定','contract_pred','num','c-orange'],
   ['成約CVR','contract_r','pct','c-green'],['失注','lost','num','c-green'],
-  ['失注率','lost_r','pct','c-green'],['売上','sales','yen','c-orange'],
+  ['失注率','lost_r','pct','c-green'],
 ];
-const TGRPS=[{l:'',cols:1,cls:'gh-def'},{l:'広告',cols:4,cls:'gh-orange'},{l:'LINE · AW',cols:6,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:5,cls:'gh-green'},{l:'売上',cols:1,cls:'gh-orange'}];
+const TGRPS=[{l:'',cols:1,cls:'gh-def'},{l:'売上 · 広告',cols:3,cls:'gh-orange'},{l:'LINE · AW',cols:6,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:5,cls:'gh-green'}];
 function fmtC(v,t){if(t==='k')return fk(v);if(t==='yen')return yen(v);if(t==='num')return nm(v);if(t==='pct')return fp(v);if(t==='roas')return v==null?'—':v.toFixed(1)+'%';return v??'—';}
 function mkTable(items){
   const wrap=document.createElement('div');wrap.className='sec table-card';
@@ -883,6 +883,10 @@ async function handleFile(file,key,slotNum,parser){
     D[key]=parser(raw);
     saveData(key);
     markSlot(slotNum,`${D[key].length}件`);
+    if(D[key].length===0){
+      const preview=raw.slice(0,3).map(r=>r.slice(0,4).join(' | ')).join('\n');
+      alert(`⚠️ ${file.name}\n読込: ${raw.length}行 → 抽出: 0件\n\n先頭3行:\n${preview}`);
+    }
     render();
   }catch(e){alert('エラー: '+e.message);console.error(e);}
 }
