@@ -354,7 +354,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v1.8';
+const CACHE_VER='v1.9';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -586,8 +586,10 @@ async function fetchSheetCSV(url){
 function buildLinked(){
   const awById={};
   for(const r of D.aw){if(r.mgmtId)awById[r.mgmtId]=r;}
+  // AW着席済み（attended=true）の管理IDのみに絞る→消化/着席の過剰カウントを防ぐ
+  const attendedIds=new Set(D.aw.filter(r=>r.attended&&r.mgmtId).map(r=>r.mgmtId));
   const nameToMgmt={};
-  for(const r of D.consult){if(r.mgmtId&&awById[r.mgmtId]&&r.name)nameToMgmt[r.name]=r.mgmtId;}
+  for(const r of D.consult){if(r.mgmtId&&attendedIds.has(r.mgmtId)&&r.name)nameToMgmt[r.name]=r.mgmtId;}
   const reservByName={};
   for(const r of D.reserv){if(!reservByName[r.name])reservByName[r.name]=[];reservByName[r.name].push(r);}
   const custByName={};
