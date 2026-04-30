@@ -357,7 +357,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.0';
+const CACHE_VER='v2.1';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -600,9 +600,12 @@ function buildLinked(){
 
   return D.aw.map(aw=>{
     const mid=aw.mgmtId;
-    const cR=D.consult.find(c=>c.mgmtId===mid&&c.applyDate);
+    // AW着席済みの人のみ個別相談・予約を検索する
+    const isAttended=aw.attended&&mid&&attendedIds.has(mid);
+    const cR=isAttended?D.consult.find(c=>c.mgmtId===mid&&c.applyDate):null;
     const name=cR?.name||'';
-    const rvs=(reservByName[name]||[]).filter(r=>r.isConsumed);
+    // nameToMgmtに含まれる名前のみ（=AW着席者経由）でreserv検索
+    const rvs=(name&&nameToMgmt[name])?(reservByName[name]||[]).filter(r=>r.isConsumed):[];
     const cu=custByName[name];
     return{
       mgmtId:mid,flowDate:aw.flowDate,
