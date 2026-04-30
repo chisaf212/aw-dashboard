@@ -357,7 +357,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.1';
+const CACHE_VER='v2.2';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -702,12 +702,12 @@ function mkKPI(t){
     {l:'売上',      v:yen(t.sales),                r:t.roas?'ROAS '+t.roas.toFixed(1)+'%':'',c:'v-green'},
     {l:'広告費',    v:yen(t.ad_total),             r:t.ad_inhouse>0?`自社 ${yen(t.ad_inhouse)}`:'未入力', c:'v-dim'},
     {l:'LINE登録',  v:nm(t.line_reg)+'人',         r:t.lcpa?'CPA '+yen(t.lcpa):'',           c:'v-blue'},
-    {l:'AW申込',    v:nm(t.aw_apply)+'件',         r:fp(t.aw_apply_r),                        c:'v-blue'},
-    {l:'AW消化',    v:nm(t.aw_consumed)+'件',      r:'開催日済',                              c:'v-dim'},
-    {l:'AW着席',    v:nm(t.aw_attend)+'件',        r:fp(t.aw_attend_r),                       c:'v-blue'},
-    {l:'個別申込',  v:nm(t.consult_apply)+'件',    r:fp(t.consult_cvr),                       c:'v-purple'},
-    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日済',                              c:'v-dim'},
-    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:fp(t.reserv_seat_r),                     c:'v-purple'},
+    {l:'AW申込',    v:nm(t.aw_apply)+'件',         r:'LINE登録 → AWタグ申込済み',               c:'v-blue'},
+    {l:'AW消化',    v:nm(t.aw_consumed)+'件',      r:'開催日時 ≤ 今日',                        c:'v-dim'},
+    {l:'AW着席',    v:nm(t.aw_attend)+'件',        r:'タグ ■AWステータス）AW着席済み',          c:'v-blue'},
+    {l:'個別申込',  v:nm(t.consult_apply)+'件',    r:'AW着席済み ∩ 個別面談予約完了',           c:'v-purple'},
+    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日 ≤ 今日',                          c:'v-dim'},
+    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:'消化済み ∩ 予約済み',                    c:'v-purple'},
     {l:'成約',      v:nm(t.contract)+'件',         r:fp(t.contract_r),                        c:'v-green'},
     {l:'成約予定',  v:nm(t.contract_pred)+'件',    r:'',                                      c:'v-dim'},
     {l:'失注',      v:nm(t.lost)+'件',             r:fp(t.lost_r),                            c:'v-red'},
