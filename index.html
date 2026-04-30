@@ -407,7 +407,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v1.4';
+const CACHE_VER='v1.5';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -561,10 +561,11 @@ function parseCustomer(rows){
 // col0=アカウント名, col1=日, col2=広告名, col3=IMP, col6=消化金額(JPY), col10=リンククリック
 // 「採用」を含む広告名はAW対象外
 function parseInhouse(rows){
-  // Row0=カラム名, Row1=合計行(スキップ), Row2以降=データ
+  // col1=日(YYYY-MM-DD)の行だけを対象→ヘッダー・合計行を自動除外
   const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
-  return rows.slice(2)
-    .filter(r=>r[1]&&r[2]&&!String(r[2]).includes('採用'))
+  const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
+  return rows
+    .filter(r=>r[1]&&isDate(r[1])&&r[2]&&!String(r[2]).includes('採用'))
     .map(r=>({
       date:  toYMD(r[1]),
       name:  String(r[2]||''),
@@ -579,10 +580,11 @@ function parseInhouse(rows){
 // col0=Day, col1=Campaign name, col2=Adset, col3=Ad Name, col4=Amount spent, col5=Impressions, col6=Link clicks, col7=Leads
 // col1に「launch」を含む行がAW対象
 function parseSuea(rows){
-  // Row0=raw_meta更新行(スキップ), Row1=カラム名(スキップ), Row2以降=データ
+  // col0=Day(YYYY-MM-DD)の行だけを対象→セル内改行によるRow0問題を回避
   const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
-  return rows.slice(2)
-    .filter(r=>r[0]&&r[1]&&String(r[1]).toLowerCase().includes('launch'))
+  const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
+  return rows
+    .filter(r=>r[0]&&isDate(r[0])&&r[1]&&String(r[1]).toLowerCase().includes('launch'))
     .map(r=>({
       date:     toYMD(r[0]),
       campaign: String(r[1]||''),
