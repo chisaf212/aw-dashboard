@@ -357,7 +357,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.2';
+const CACHE_VER='v2.3';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -604,15 +604,17 @@ function buildLinked(){
     const isAttended=aw.attended&&mid&&attendedIds.has(mid);
     const cR=isAttended?D.consult.find(c=>c.mgmtId===mid&&c.applyDate):null;
     const name=cR?.name||'';
-    // nameToMgmtに含まれる名前のみ（=AW着席者経由）でreserv検索
-    const rvs=(name&&nameToMgmt[name])?(reservByName[name]||[]).filter(r=>r.isConsumed):[];
+    // 顧客管理シートから消化・着席を取得（お客様名=本名で照合）
     const cu=custByName[name];
+    // 個別消化 = 顧客管理シートに存在 かつ 面談日≤今日
+    // 個別着席 = 着座ステータス（顧客管理シートの「着座」）
     return{
       mgmtId:mid,flowDate:aw.flowDate,
       awApplyDate:aw.applyDate,awConsumed:aw.isConsumed,awAttended:aw.attended,
       consultApply:!!cR,consultDate:cR?.applyDate||null,
-      reservConsumed:rvs.length>0,reservSeated:rvs.some(r=>r.seated),
-      reservDate:rvs[0]?.date||null,
+      reservConsumed:!!(cu?.isConsumed),         // 面談日≤今日（顧客管理シート）
+      reservSeated:  cu?.seatST==='着座'||false, // 着座ステータス（顧客管理シート）
+      reservDate:    cu?.meetDate||null,
       contracted:cu?ST_C.includes(cu.afterST):false,
       contractPred:cu?ST_PRED.includes(cu.afterST):false,
       lost:cu?ST_LOST.includes(cu.afterST):false,
@@ -706,8 +708,8 @@ function mkKPI(t){
     {l:'AW消化',    v:nm(t.aw_consumed)+'件',      r:'開催日時 ≤ 今日',                        c:'v-dim'},
     {l:'AW着席',    v:nm(t.aw_attend)+'件',        r:'タグ ■AWステータス）AW着席済み',          c:'v-blue'},
     {l:'個別申込',  v:nm(t.consult_apply)+'件',    r:'AW着席済み ∩ 個別面談予約完了',           c:'v-purple'},
-    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日 ≤ 今日',                          c:'v-dim'},
-    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:'消化済み ∩ 予約済み',                    c:'v-purple'},
+    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日≤今日（顧客管理シート）',            c:'v-dim'},
+    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:'着座ステータス（顧客管理シート）',          c:'v-purple'},
     {l:'成約',      v:nm(t.contract)+'件',         r:fp(t.contract_r),                        c:'v-green'},
     {l:'成約予定',  v:nm(t.contract_pred)+'件',    r:'',                                      c:'v-dim'},
     {l:'失注',      v:nm(t.lost)+'件',             r:fp(t.lost_r),                            c:'v-red'},
