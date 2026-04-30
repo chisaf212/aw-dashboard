@@ -275,13 +275,16 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
       </div>
       <button class="slot-clear" id="sc6" title="削除">×</button>
     </div>
-    <!-- CSV07: 有川さんMeta（箱のみ） -->
-    <div class="slot slot-disabled" id="slot7" style="opacity:.4;pointer-events:none">
+    <!-- CSV07: 有川さんMeta -->
+    <div class="slot" id="slot7">
+      <input type="file" id="f7" accept=".csv,.xlsx">
       <div class="slot-num">7</div>
       <div class="slot-info">
         <div class="slot-label">有川さんMeta広告費</div>
-        <div class="slot-sub">準備中</div>
+        <div class="slot-sub">CSV or 固定値を使用</div>
+        <div class="slot-ok" id="so7"></div>
       </div>
+      <button class="slot-clear" id="sc7" title="削除">×</button>
     </div>
   </div>
 
@@ -335,7 +338,9 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
 
 <script>
 // ========== State ==========
-const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[]};
+const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[],arikawa:[]};
+// 有川さんMeta 4月固定値（CSVがない場合に使用）
+const ARIKAWA_MANUAL={cost:6109576,reserv:384,reservCPA:15910,note:'4月実績（手数料込み）'};
 let view='monthly',agency=false;
 let CH={};
 const TODAY=new Date();TODAY.setHours(23,59,59,999);
@@ -347,9 +352,9 @@ const SHEET_INHOUSE='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=157755168';
 
 // ========== LocalStorage ==========
-const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6'};
+const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v1.7';
+const CACHE_VER='v1.8';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -364,6 +369,7 @@ function saveData(key){
     if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
+    if(key==='arikawa')   mini=D.arikawa.map(r=>({d:r.date,c:r.cost}));
     localStorage.setItem(STORE_KEYS[key],JSON.stringify(mini));
     updateSavedTime();
   }catch(e){console.warn('Storage error:',e);}
@@ -396,13 +402,14 @@ function loadAllFromStorage(){
     if(D.customer.length)  markSlot(4,`${D.customer.length}件`);
     if(D.inhouseAd.length) markSlot(5,`${D.inhouseAd.length}件`);
     if(D.sueaAd.length)    markSlot(6,`${D.sueaAd.length}件`);
+    if(D.arikawa.length)   markSlot(7,`${D.arikawa.length}件`);
   }catch(e){console.warn('Storage load error:',e);}
 }
 
 function clearData(key){
   D[key]=[];
   localStorage.removeItem(STORE_KEYS[key]);
-  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6}[key];
+  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6,arikawa:7}[key];
   const sl=document.getElementById(`slot${idx}`);
   sl.classList.remove('ok');
   document.getElementById(`so${idx}`).textContent='';
@@ -529,10 +536,11 @@ function parseInhouse(rows){
 // col1に「launch」を含む行がAW対象
 function parseSuea(rows){
   // col0=Day(YYYY-MM-DD)の行だけを対象→セル内改行によるRow0問題を回避
+  // launch以外がオートウェビナー対象
   const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
   const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
   return rows
-    .filter(r=>r[0]&&isDate(r[0])&&r[1]&&String(r[1]).toLowerCase().includes('launch'))
+    .filter(r=>r[0]&&isDate(r[0])&&r[1]&&!String(r[1]).toLowerCase().includes('launch'))
     .map(r=>({
       date:     toYMD(r[0]),
       campaign: String(r[1]||''),
@@ -541,6 +549,19 @@ function parseSuea(rows){
       click:    np(r[6]),
     }))
     .filter(r=>r.date&&r.cost>0);
+}
+
+// CSV07: 有川さんMeta広告費（フォーマット未定のため日付+消化金額を柔軟に読む）
+function parseArikawa(rows){
+  const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
+  const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
+  // 日付列を自動検出
+  return rows.filter(r=>r.some(v=>isDate(v))).map(r=>{
+    const di=r.findIndex(v=>isDate(v));
+    const date=toYMD(r[di]);
+    const cost=np(r[di+1])||np(r[di+2])||0;
+    return{date,cost};
+  }).filter(r=>r.date&&r.cost>0);
 }
 
 // スプレッドシートからCSV直接fetch
@@ -812,29 +833,34 @@ function renderMedia(){
   const inhClick=D.inhouseAd.reduce((s,r)=>s+r.click,0);
   const sueaClick=D.sueaAd.reduce((s,r)=>s+r.click,0);
 
-  const media=[
-    {k:'自社（インハウス）', cost:inhTotal,  imp:inhImp,  click:inhClick,  note:'「採用」除外済', has:D.inhouseAd.length>0},
-    {k:'スーア',             cost:sueaTotal, imp:sueaImp, click:sueaClick, note:'「launch」のみ',  has:D.sueaAd.length>0},
-    {k:'有川さんMeta',       cost:null,      imp:null,    click:null,      note:'準備中',           has:false},
-  ];
+  // 有川さん：CSVがあればそちら、なければ固定値
+  const arikawaCSVCost=D.arikawa.reduce((s,r)=>s+r.cost,0);
+  const arikawaCost = arikawaCSVCost > 0 ? arikawaCSVCost : ARIKAWA_MANUAL.cost;
+  const arikawaNote = arikawaCSVCost > 0 ? 'CSV読込' : `固定値（${ARIKAWA_MANUAL.note}）`;
 
-  const hd=['媒体','広告費','IMP','Click','CPM','CPC','備考'].map(l=>`<th class="ch">${l}</th>`).join('');
+  const media=[
+    {k:'自社（インハウス）', cost:inhTotal,   note:'「採用」除外', has:D.inhouseAd.length>0,
+     extra:[{l:'IMP',v:nm(inhImp)},{l:'Click',v:nm(inhClick)}]},
+    {k:'スーア',             cost:sueaTotal,  note:'launch以外がAW', has:D.sueaAd.length>0,
+     extra:[{l:'IMP',v:nm(sueaImp)},{l:'Click',v:nm(sueaClick)}]},
+    {k:'有川さんMeta',       cost:arikawaCost,note:arikawaNote, has:true,
+     extra:[{l:'予約数',v:nm(ARIKAWA_MANUAL.reserv)},{l:'予約CPA',v:yen(ARIKAWA_MANUAL.reservCPA)}]},
+  ];
+  const totalAdCost=inhTotal+sueaTotal+arikawaCost;
+
+  const hd=['媒体','広告費（手数料込み）','補足①','補足②','備考'].map(l=>`<th class="ch">${l}</th>`).join('');
   const bd=media.map(m=>{
-    const cpm=m.imp>0?m.cost/m.imp*1000:null;
-    const cpc=m.click>0?m.cost/m.click:null;
     return`<tr>
-      <td style="font-weight:500">${m.k}${!m.has?'<span style="font-size:9px;color:var(--t3);margin-left:6px">未読込</span>':''}</td>
+      <td>${m.k}${!m.has?'<span style="font-size:9px;color:var(--t3);margin-left:5px">未読込</span>':''}</td>
       <td class="${m.cost>0?'pos':''}">${yen(m.cost)}</td>
-      <td>${nm(m.imp)}</td>
-      <td>${nm(m.click)}</td>
-      <td>${yen(cpm)}</td>
-      <td>${yen(cpc)}</td>
-      <td style="color:var(--t3);font-size:11px">${m.note}</td>
+      <td>${m.extra[0]?`${m.extra[0].l}: ${m.extra[0].v}`:'—'}</td>
+      <td>${m.extra[1]?`${m.extra[1].l}: ${m.extra[1].v}`:'—'}</td>
+      <td style="color:var(--t3);font-size:10px">${m.note}</td>
     </tr>`;
   }).join('');
 
   el.innerHTML=`<div class="table-card">
-    <div class="table-bar"><span class="table-ttl">媒体別 広告費</span><span class="table-meta">合計 ${yen(inhTotal+sueaTotal)}</span></div>
+    <div class="table-bar"><span class="table-ttl">媒体別 広告費</span><span class="table-meta">合計 ${yen(totalAdCost)}</span></div>
     <div class="tscroll"><table><thead><tr>${hd}</tr></thead><tbody>${bd}</tbody></table></div>
   </div>`;
 }
@@ -870,6 +896,7 @@ setupSlot('slot3','f3','sc3','reserv',3,parseReserv);
 setupSlot('slot4','f4','sc4','customer',4,parseCustomer);
 setupSlot('slot5','f5','sc5','inhouseAd',5,parseInhouse);
 setupSlot('slot6','f6','sc6','sueaAd',6,parseSuea);
+setupSlot('slot7','f7','sc7','arikawa',7,parseArikawa);
 
 // スプシ自動読み込みボタン
 document.getElementById('btnFetchAll').addEventListener('click',async()=>{
