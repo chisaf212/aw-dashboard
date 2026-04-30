@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AW Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0a0a0a;
+  --s1:#141414;
+  --s2:#1e1e1e;
+  --s3:#282828;
+  --s4:#323232;
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.12);
+  --text:#f0f0f0;
+  --t2:#a0a0a0;
+  --t3:#606060;
+  --acc:#e07850;
+  --acc-d:rgba(224,120,80,.12);
+  --blue:#7aadfa;
+  --blue-d:rgba(122,173,250,.1);
+  --purple:#a78bfa;
+  --purple-d:rgba(167,139,250,.1);
+  --green:#6ee7b7;
+  --green-d:rgba(110,231,183,.1);
+  --red:#f87171;
+  --red-d:rgba(248,113,113,.1);
+  --amber:#fbbf24;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* ── Sidebar layout ── */
+.layout{display:flex;min-height:100vh}
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--s1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.body{flex:1;min-width:0;overflow:hidden}
+
+/* Sidebar header */
+.sb-logo{
+  padding:20px 20px 0;
+  font-size:14px;font-weight:600;letter-spacing:-.3px;
+}
+.sb-logo span{color:var(--acc)}
+.sb-divider{height:1px;background:var(--border);margin:16px 12px}
+
+/* Nav */
+.sb-nav{padding:0 8px;display:flex;flex-direction:column;gap:2px}
+.sb-nav-item{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border-radius:8px;cursor:pointer;color:var(--t2);
+  font-size:13px;font-weight:500;transition:.12s;border:none;background:none;width:100%;text-align:left;
+}
+.sb-nav-item:hover{background:var(--s2);color:var(--text)}
+.sb-nav-item.on{background:var(--s3);color:var(--text)}
+.sb-nav-item svg{flex-shrink:0;opacity:.7}
+.sb-nav-item.on svg{opacity:1}
+
+.sb-section{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--t3);padding:12px 20px 4px;text-transform:uppercase}
+
+/* CSV slots */
+.sb-slots{padding:0 8px;display:flex;flex-direction:column;gap:3px}
+.slot{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;position:relative;transition:.12s;
+}
+.slot:hover{border-color:var(--border2)}
+.slot.ok{border-color:rgba(110,231,183,.3)}
+.slot input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.slot-num{
+  width:20px;height:20px;border-radius:5px;background:var(--s3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;color:var(--t2);flex-shrink:0;
+}
+.slot.ok .slot-num{background:var(--green-d);color:var(--green)}
+.slot-info{min-width:0;flex:1}
+.slot-label{font-size:11px;font-weight:500;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.ok .slot-label{color:var(--text)}
+.slot-sub{font-size:9px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-ok{font-size:9px;color:var(--green);margin-top:1px;display:none}
+.slot.ok .slot-ok{display:block}
+.slot.ok .slot-sub{display:none}
+.slot-clear{
+  width:16px;height:16px;border-radius:4px;background:var(--red-d);border:none;
+  color:var(--red);font-size:10px;cursor:pointer;display:none;
+  align-items:center;justify-content:center;flex-shrink:0;z-index:2;position:relative;
+}
+.slot.ok .slot-clear{display:flex}
+
+.sb-last{padding:8px 20px;font-size:10px;color:var(--t3)}
+
+/* ── Main header ── */
+.main-header{
+  height:56px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:12px;background:var(--s1);
+  position:sticky;top:0;z-index:50;
+}
+.page-title{font-size:15px;font-weight:600}
+.header-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* Pills */
+.pills{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+.pill{
+  padding:5px 14px;border:none;border-radius:6px;cursor:pointer;
+  font-family:inherit;font-size:12px;font-weight:500;color:var(--t2);background:transparent;transition:.12s;
+}
+.pill.on{background:var(--s4);color:var(--text)}
+
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2)}
+.toggle-lbl.on{color:var(--text)}
+.sw{position:relative;width:34px;height:18px;cursor:pointer;flex-shrink:0}
+.sw input{display:none}
+.sw-t{position:absolute;inset:0;background:var(--s3);border:1px solid var(--border);border-radius:9px;transition:.18s}
+.sw input:checked~.sw-t{background:var(--acc);border-color:var(--acc)}
+.sw-d{position:absolute;width:12px;height:12px;background:var(--t3);border-radius:50%;top:3px;left:3px;transition:.18s}
+.sw input:checked~.sw-d{left:19px;background:#fff}
+
+/* ── Content ── */
+.content{padding:20px 24px}
+.page{display:none}.page.on{display:block}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;gap:16px;color:var(--t3);text-align:center}
+.empty svg{opacity:.25}
+.empty h2{font-size:15px;font-weight:500;color:var(--t2)}
+.empty p{font-size:12px;line-height:1.8}
+
+/* ── Section ── */
+.sec{margin-bottom:24px}
+.sec-title{
+  font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── KPI Flat (1-2行) ── */
+.kpi-grid-flat{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:6px;margin-bottom:10px}
+.kpi-card-flat{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;position:relative;overflow:hidden}
+.kpi-card-flat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent}
+.kpi-card-flat.c-blue::before{background:var(--blue)}
+.kpi-card-flat.c-purple::before{background:var(--purple)}
+.kpi-card-flat.c-green::before{background:var(--green)}
+.kpi-card-flat.c-orange::before{background:var(--acc)}
+.kpi-card-flat.c-red::before{background:var(--red)}
+.kpif-label{font-size:9px;color:var(--t3);margin-bottom:3px;font-weight:500;letter-spacing:.02em}
+.kpif-val{font-size:16px;font-weight:600;letter-spacing:-.3px;line-height:1}
+.kpif-rate{font-size:9px;color:var(--t3);margin-top:2px}
+
+/* ── KPI Grid ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.kpi-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:16px;position:relative;overflow:hidden;transition:.15s;
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent;transition:.15s}
+.kpi-card.c-blue::before{background:var(--blue)}
+.kpi-card.c-purple::before{background:var(--purple)}
+.kpi-card.c-green::before{background:var(--green)}
+.kpi-card.c-orange::before{background:var(--acc)}
+.kpi-card.c-red::before{background:var(--red)}
+.kpi-label{font-size:11px;color:var(--t2);margin-bottom:8px;font-weight:400}
+.kpi-val{font-size:26px;font-weight:600;letter-spacing:-.5px;line-height:1}
+.kpi-sub{font-size:10px;color:var(--t3);margin-top:6px}
+.kpi-rate{font-size:13px;color:var(--t2);margin-top:4px;font-weight:500}
+.v-blue{color:var(--blue)}.v-purple{color:var(--purple)}.v-green{color:var(--green)}
+.v-orange{color:var(--acc)}.v-red{color:var(--red)}.v-dim{color:var(--t3)}
+
+/* ── Funnel ── */
+.funnel-wrap{display:flex;flex-direction:column;gap:8px}
+.funnel-row{display:grid;grid-template-columns:140px 1fr 70px;align-items:center;gap:10px}
+.funnel-lbl{font-size:11px;color:var(--t2);text-align:right}
+.funnel-bar-bg{background:var(--s2);border-radius:4px;height:24px;overflow:hidden}
+.funnel-bar{height:100%;border-radius:4px;min-width:2px;transition:width .6s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;padding:0 8px}
+.funnel-bar-val{font-size:10px;font-weight:600;color:rgba(255,255,255,.8)}
+.funnel-num{font-size:13px;font-weight:600;color:var(--text);text-align:right}
+
+/* ── Chart row ── */
+.chart-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:1100px){.chart-row{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.chart-row{grid-template-columns:1fr}}
+.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px}
+.chart-ttl{font-size:11px;font-weight:500;color:var(--t2);margin-bottom:12px}
+.chart-area{position:relative;height:160px}
+
+/* ── Table ── */
+.table-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.table-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.table-ttl{font-size:13px;font-weight:600}
+.table-meta{font-size:11px;color:var(--t3)}
+.tscroll{overflow-x:auto;max-height:460px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;min-width:820px;font-size:12px}
+
+thead tr.gh th{padding:4px 12px;font-size:9px;font-weight:700;text-align:center;letter-spacing:.08em;text-transform:uppercase}
+.gh-def{background:#161616;color:var(--t3)}
+.gh-blue{background:var(--blue-d);color:var(--blue)}
+.gh-purple{background:var(--purple-d);color:var(--purple)}
+.gh-green{background:var(--green-d);color:var(--green)}
+.gh-orange{background:var(--acc-d);color:var(--acc)}
+
+thead th.ch{
+  background:var(--s2);padding:8px 12px;font-size:10px;font-weight:500;
+  text-align:right;color:var(--t3);white-space:nowrap;
+  position:sticky;top:0;z-index:10;border-bottom:1px solid var(--border);
+}
+thead th.ch:first-child{text-align:left;position:sticky;left:0;z-index:20;background:var(--s2)}
+thead th.ch.c-blue{color:var(--blue)} thead th.ch.c-purple{color:var(--purple)}
+thead th.ch.c-green{color:var(--green)} thead th.ch.c-orange{color:var(--acc)}
+
+tbody tr{transition:background .08s}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td{
+  padding:9px 12px;text-align:right;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  white-space:nowrap;color:var(--text);
+}
+td:first-child{text-align:left;color:var(--t2);position:sticky;left:0;background:var(--s1);z-index:5}
+td.pos{color:var(--green)} td.neg{color:var(--red)} td.dim{color:var(--t3)}
+.rank td:first-child{color:var(--text);font-weight:500}
+
+/* ── Tabs in page ── */
+.page-tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.page-tab{
+  padding:10px 16px;border:none;background:none;cursor:pointer;
+  font-family:inherit;font-size:13px;color:var(--t2);
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s;
+}
+.page-tab.on{color:var(--text);border-bottom-color:var(--acc)}
+
+.spin-wrap{display:flex;align-items:center;justify-content:center;padding:60px;gap:10px;color:var(--t2)}
+.spin{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--acc);border-radius:50%;animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sb-logo">SnsClub <span>AW</span></div>
+  <div class="sb-divider"></div>
+
+  <div class="sb-nav">
+    <button class="sb-nav-item on" data-page="p1">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      時系列
+    </button>
+    <button class="sb-nav-item" data-page="p2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      媒体別
+    </button>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section">データソース</div>
+
+  <div class="sb-slots">
+    <!-- CSV01 -->
+    <div class="slot" id="slot1">
+      <input type="file" id="f1" accept=".csv,.xlsx">
+      <div class="slot-num">1</div>
+      <div class="slot-info">
+        <div class="slot-label">AW導線数値管理</div>
+        <div class="slot-sub">LINE登録・AW申込・着席</div>
+        <div class="slot-ok" id="so1"></div>
+      </div>
+      <button class="slot-clear" id="sc1" title="削除">×</button>
+    </div>
+    <!-- CSV02 -->
+    <div class="slot" id="slot2">
+      <input type="file" id="f2" accept=".csv,.xlsx">
+      <div class="slot-num">2</div>
+      <div class="slot-info">
+        <div class="slot-label">AW導線_個別相談</div>
+        <div class="slot-sub">個別相談申込</div>
+        <div class="slot-ok" id="so2"></div>
+      </div>
+      <button class="slot-clear" id="sc2" title="削除">×</button>
+    </div>
+    <!-- CSV03 -->
+    <div class="slot" id="slot3">
+      <input type="file" id="f3" accept=".csv,.xlsx">
+      <div class="slot-num">3</div>
+      <div class="slot-info">
+        <div class="slot-label">予約管理</div>
+        <div class="slot-sub">個別相談消化・着席</div>
+        <div class="slot-ok" id="so3"></div>
+      </div>
+      <button class="slot-clear" id="sc3" title="削除">×</button>
+    </div>
+    <!-- CSV04 -->
+    <div class="slot" id="slot4">
+      <input type="file" id="f4" accept=".csv,.xlsx">
+      <div class="slot-num">4</div>
+      <div class="slot-info">
+        <div class="slot-label">顧客管理シート</div>
+        <div class="slot-sub">成約・担当者</div>
+        <div class="slot-ok" id="so4"></div>
+      </div>
+      <button class="slot-clear" id="sc4" title="削除">×</button>
+    </div>
+    <!-- CSV05: インハウス広告費 -->
+    <div class="slot" id="slot5">
+      <input type="file" id="f5" accept=".csv,.xlsx">
+      <div class="slot-num">5</div>
+      <div class="slot-info">
+        <div class="slot-label">インハウス広告費</div>
+        <div class="slot-sub">「採用」除外→AW対象</div>
+        <div class="slot-ok" id="so5"></div>
+      </div>
+      <button class="slot-clear" id="sc5" title="削除">×</button>
+    </div>
+    <!-- CSV06: スーア広告費 -->
+    <div class="slot" id="slot6">
+      <input type="file" id="f6" accept=".csv,.xlsx">
+      <div class="slot-num">6</div>
+      <div class="slot-info">
+        <div class="slot-label">スーア広告費</div>
+        <div class="slot-sub">「launch」含む→AW対象</div>
+        <div class="slot-ok" id="so6"></div>
+      </div>
+      <button class="slot-clear" id="sc6" title="削除">×</button>
+    </div>
+    <!-- CSV07: 有川さんMeta（箱のみ） -->
+    <div class="slot slot-disabled" id="slot7" style="opacity:.4;pointer-events:none">
+      <div class="slot-num">7</div>
+      <div class="slot-info">
+        <div class="slot-label">有川さんMeta広告費</div>
+        <div class="slot-sub">準備中</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section">自動読込</div>
+  <div style="padding:0 8px 8px">
+    <button id="btnFetchAll" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:11px;cursor:pointer;font-family:inherit">
+      ↓ スプシから広告費を読込
+    </button>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-last" id="lastSaved">未保存</div>
+</aside>
+
+<!-- ── Main ── -->
+<div class="body">
+  <header class="main-header">
+    <div class="page-title" id="pageTitle">時系列</div>
+    <div class="header-right" id="headerCtrl">
+      <div class="pills" id="vPills">
+        <button class="pill on" data-v="monthly">月次</button>
+        <button class="pill" data-v="weekly">週次</button>
+        <button class="pill" data-v="daily">日次</button>
+      </div>
+      <label class="toggle">
+        <span class="toggle-lbl on" id="lOwn">自社</span>
+        <span class="sw"><input type="checkbox" id="aTgl"><span class="sw-t"></span><span class="sw-d"></span></span>
+        <span class="toggle-lbl" id="lAg">代理店 +20%</span>
+      </label>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- Page 1: 時系列 -->
+    <div class="page on" id="p1">
+      <div class="empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <h2>CSV 1〜4 をアップロード</h2>
+        <p>左のサイドバーからCSVをドロップ<br>次回以降は自動で復元されます</p>
+      </div>
+    </div>
+
+    <!-- Page 2: 媒体別 -->
+    <div class="page" id="p2">
+      <div id="pt-media">
+        <div class="empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20"/></svg>
+          <h2>CSV 5 広告DB連携をアップロード</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ========== State ==========
+const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[]};
+let view='monthly',agency=false;
+let CH={};
+const TODAY=new Date();TODAY.setHours(23,59,59,999);
+const PRICE={'プレミアムプラスコース':880000,'コミットコース':880000};
+const planPrice=p=>PRICE[p]||0;
+
+// スプシ直接読込URL
+const SHEET_INHOUSE='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=2135903601';
+const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=157755168';
+
+// ========== LocalStorage ==========
+const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6'};
+
+function saveData(key){
+  try{
+    let mini;
+    if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
+    if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate}));
+    if(key==='reserv')  mini=D.reserv.map(r=>({n:r.name,d:r.date,ok:r.seated?1:0}));
+    if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
+    if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
+    if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
+    localStorage.setItem(STORE_KEYS[key],JSON.stringify(mini));
+    updateSavedTime();
+  }catch(e){console.warn('Storage error:',e);}
+}
+
+function loadAllFromStorage(){
+  const isPastFn=d=>d?new Date(d+'T23:59:59')<=TODAY:false;
+  try{
+    const r1=JSON.parse(localStorage.getItem('aw1')||'null');
+    if(r1) D.aw=r1.map(r=>({mgmtId:r.m,flowDate:r.f,applyDate:r.a,schedDate:r.s,attended:!!r.t,isConsumed:isPastFn(r.s?toJaYMD(r.s):null)}));
+
+    const r2=JSON.parse(localStorage.getItem('aw2')||'null');
+    if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d}));
+
+    const r3=JSON.parse(localStorage.getItem('aw3')||'null');
+    if(r3) D.reserv=r3.map(r=>({name:r.n,date:r.d,isConsumed:isPastFn(r.d),seated:!!r.ok}));
+
+    const r4=JSON.parse(localStorage.getItem('aw4')||'null');
+    if(r4) D.customer=r4.map(r=>({name:r.n,staff:r.sf,meetDate:r.d,route:r.rt,seatST:r.st,afterST:r.as,plan:r.pl,isConsumed:isPastFn(r.d)}));
+
+    const r5=JSON.parse(localStorage.getItem('aw5')||'null');
+    if(r5) D.inhouseAd=r5.map(r=>({date:r.d,cost:r.c,imp:r.i,click:r.cl}));
+    const r6=JSON.parse(localStorage.getItem('aw6')||'null');
+    if(r6) D.sueaAd=r6.map(r=>({date:r.d,cost:r.c,imp:r.i,click:r.cl}));
+
+    // スロット表示更新
+    if(D.aw.length)        markSlot(1,`${D.aw.length}件`);
+    if(D.consult.length)   markSlot(2,`${D.consult.length}件`);
+    if(D.reserv.length)    markSlot(3,`${D.reserv.length}件`);
+    if(D.customer.length)  markSlot(4,`${D.customer.length}件`);
+    if(D.inhouseAd.length) markSlot(5,`${D.inhouseAd.length}件`);
+    if(D.sueaAd.length)    markSlot(6,`${D.sueaAd.length}件`);
+  }catch(e){console.warn('Storage load error:',e);}
+}
+
+function clearData(key){
+  D[key]=[];
+  localStorage.removeItem(STORE_KEYS[key]);
+  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6}[key];
+  const sl=document.getElementById(`slot${idx}`);
+  sl.classList.remove('ok');
+  document.getElementById(`so${idx}`).textContent='';
+  render();
+}
+
+function updateSavedTime(){
+  const d=new Date();
+  document.getElementById('lastSaved').textContent=
+    `保存済 ${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function markSlot(n,txt){
+  const sl=document.getElementById(`slot${n}`);
+  sl.classList.add('ok');
+  document.getElementById(`so${n}`).textContent=txt;
+}
+
+// ========== Date ==========
+function toYMD(v){
+  if(!v) return null;
+  const s=String(v).trim();
+  let m=s.match(/(\d{1,2})月(\d{1,2})日/);
+  if(m) return `2026-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  m=s.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return null;
+}
+function toJaYMD(s){ return s; } // schedDateは既にYMD形式で保存
+function isPast(d){if(!d)return false;return new Date(d+'T23:59:59')<=TODAY;}
+function toYM(d){return d?d.slice(0,7):null;}
+function toWeek(d){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate()-dt.getDay()+1);return dt.toISOString().slice(0,10);}
+function keyFn(d){return view==='monthly'?toYM(d):view==='weekly'?toWeek(d):d;}
+const normName=s=>String(s||'').trim().replace(/[\s　]/g,'');
+
+// ========== File reader ==========
+async function readFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='xlsx'||ext==='xls'){
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null});
+  }
+  const buf=await file.arrayBuffer();
+  let text=null;
+  for(const enc of['cp932','shift-jis','utf-8','utf-8-sig']){
+    try{text=new TextDecoder(enc,{fatal:true}).decode(buf);break;}catch{}
+  }
+  if(!text)text=new TextDecoder('utf-8').decode(buf);
+  return text.split('\n').map(line=>{
+    const cells=[];let inQ=false,cell='';
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){if(inQ&&line[i+1]==='"'){cell+='"';i++;}else inQ=!inQ;}
+      else if(c===','&&!inQ){cells.push(cell||null);cell='';}
+      else cell+=c;
+    }
+    cells.push(cell||null);
+    return cells;
+  });
+}
+
+// ========== Parsers ==========
+function parseAW(rows){
+  return rows.slice(2).map(r=>({
+    mgmtId:String(r[3]||'').trim(),
+    flowDate:toYMD(r[4]),applyDate:toYMD(r[5]),schedDate:toYMD(r[6]),
+    attended:String(r[2]||'')==='1',isConsumed:isPast(toYMD(r[6])),
+  })).filter(r=>r.flowDate);
+}
+function parseConsult(rows){
+  return rows.slice(2)
+    .filter(r=>r[5])
+    .map(r=>({mgmtId:String(r[4]||'').trim(),name:normName(r[2]),applyDate:toYMD(r[5])}));
+}
+function parseReserv(rows){
+  return rows.slice(1).map(r=>({
+    name:normName(r[13])||normName(r[1]),
+    date:r[2]?String(r[2]).trim():null,
+    isConsumed:r[2]?isPast(String(r[2]).trim()):false,
+    seated:String(r[7]||'').trim()==='予約済み',
+  })).filter(r=>r.date);
+}
+const ST_C=['成約','予定→成約','保留→成約','ライフティ否決→成約'];
+const ST_PRED=['成約予定（契あり）','成約予定（ライフティ）'];
+const ST_LOST=['失注','保留→失注','成約予定→失注','クーリングオフ','ライフティ否決→失注','MLM失注'];
+function parseCustomer(rows){
+  return rows.slice(5).map(r=>({
+    name:normName(r[0]),staff:String(r[1]||'').trim(),
+    meetDate:toYMD(r[4]),route:String(r[5]||'').trim(),
+    seatST:String(r[6]||'').trim(),afterST:String(r[7]||'').trim(),
+    plan:String(r[14]||'').trim(),
+    isConsumed:(()=>{const d=toYMD(r[4]);return d?isPast(d):false;})(),
+  })).filter(r=>r.name&&r.meetDate);
+}
+// CSV05: インハウス広告費
+// col0=アカウント名, col1=日, col2=広告名, col3=IMP, col6=消化金額(JPY), col10=リンククリック
+// 「採用」を含む広告名はAW対象外
+function parseInhouse(rows){
+  // Row0=カラム名, Row1=合計行(スキップ), Row2以降=データ
+  const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
+  return rows.slice(2)
+    .filter(r=>r[1]&&r[2]&&!String(r[2]).includes('採用'))
+    .map(r=>({
+      date:  toYMD(r[1]),
+      name:  String(r[2]||''),
+      cost:  np(r[6]),
+      imp:   np(r[3]),
+      click: np(r[10]),
+    }))
+    .filter(r=>r.date&&r.cost>0);
+}
+
+// CSV06: スーア広告費
+// col0=Day, col1=Campaign name, col2=Adset, col3=Ad Name, col4=Amount spent, col5=Impressions, col6=Link clicks, col7=Leads
+// col1に「launch」を含む行がAW対象
+function parseSuea(rows){
+  // Row0=raw_meta更新行(スキップ), Row1=カラム名(スキップ), Row2以降=データ
+  const np=v=>{if(!v&&v!==0)return 0;return parseFloat(String(v).replace(/[¥,\s]/g,''))||0;};
+  return rows.slice(2)
+    .filter(r=>r[0]&&r[1]&&String(r[1]).toLowerCase().includes('launch'))
+    .map(r=>({
+      date:     toYMD(r[0]),
+      campaign: String(r[1]||''),
+      cost:     np(r[4]),
+      imp:      np(r[5]),
+      click:    np(r[6]),
+    }))
+    .filter(r=>r.date&&r.cost>0);
+}
+
+// スプレッドシートからCSV直接fetch
+async function fetchSheetCSV(url){
+  const res=await fetch(url,{redirect:'follow'});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text=await res.text();
+  return text.split('\n').map(line=>{
+    const cells=[];let inQ=false,cell='';
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){if(inQ&&line[i+1]==='"'){cell+='"';i++;}else inQ=!inQ;}
+      else if(c===','&&!inQ){cells.push(cell||null);cell='';}
+      else cell+=c;
+    }
+    cells.push(cell||null);
+    return cells;
+  });
+}
+
+// ========== Linked data ==========
+function buildLinked(){
+  const awById={};
+  for(const r of D.aw){if(r.mgmtId)awById[r.mgmtId]=r;}
+  const nameToMgmt={};
+  for(const r of D.consult){if(r.mgmtId&&awById[r.mgmtId]&&r.name)nameToMgmt[r.name]=r.mgmtId;}
+  const reservByName={};
+  for(const r of D.reserv){if(!reservByName[r.name])reservByName[r.name]=[];reservByName[r.name].push(r);}
+  const custByName={};
+  for(const r of D.customer){if(r.name&&!custByName[r.name])custByName[r.name]=r;}
+
+  return D.aw.map(aw=>{
+    const mid=aw.mgmtId;
+    const cR=D.consult.find(c=>c.mgmtId===mid&&c.applyDate);
+    const name=cR?.name||'';
+    const rvs=(reservByName[name]||[]).filter(r=>r.isConsumed);
+    const cu=custByName[name];
+    return{
+      mgmtId:mid,flowDate:aw.flowDate,
+      awApplyDate:aw.applyDate,awConsumed:aw.isConsumed,awAttended:aw.attended,
+      consultApply:!!cR,consultDate:cR?.applyDate||null,
+      reservConsumed:rvs.length>0,reservSeated:rvs.some(r=>r.seated),
+      reservDate:rvs[0]?.date||null,
+      contracted:cu?ST_C.includes(cu.afterST):false,
+      contractPred:cu?ST_PRED.includes(cu.afterST):false,
+      lost:cu?ST_LOST.includes(cu.afterST):false,
+      pending:cu?.afterST==='保留'||false,
+      cooling:cu?.afterST==='クーリングオフ'||false,
+      sales:(cu&&ST_C.includes(cu.afterST))?planPrice(cu.plan):0,
+      staff:cu?.staff||'',route:cu?.route||'',
+      plan:cu?.plan||'',meetDate:cu?.meetDate||null,seatST:cu?.seatST||'',
+    };
+  });
+}
+
+// ========== Aggregate ==========
+function emptyM(){return{line_reg:0,aw_apply:0,aw_consumed:0,aw_attend:0,consult_apply:0,reserv_consumed:0,reserv_seated:0,contract:0,contract_pred:0,lost:0,pending:0,cooling:0,sales:0,ad_inhouse:0,ad_suea:0,ad_imp:0,ad_click:0};}
+function aggregate(){
+  const users=buildLinked();const map={};
+  const g=k=>{if(!map[k])map[k]=emptyM();return map[k];};
+  for(const u of users){
+    const kF=keyFn(u.flowDate);if(kF)g(kF).line_reg++;
+    if(u.awApplyDate){const k=keyFn(u.awApplyDate);if(k){g(k).aw_apply++;if(u.awConsumed)g(k).aw_consumed++;if(u.awAttended)g(k).aw_attend++;}}
+    if(u.consultApply&&u.consultDate){const k=keyFn(u.consultDate);if(k)g(k).consult_apply++;}
+    if(u.reservDate){const k=keyFn(u.reservDate);if(k){if(u.reservConsumed)g(k).reserv_consumed++;if(u.reservSeated)g(k).reserv_seated++;}}
+    if(u.meetDate&&u.seatST==='着座'){const k=keyFn(u.meetDate);if(k){if(u.contracted){g(k).contract++;g(k).sales+=u.sales;}if(u.contractPred)g(k).contract_pred++;if(u.lost)g(k).lost++;if(u.pending)g(k).pending++;if(u.cooling)g(k).cooling++;}}
+  }
+  // 広告費集計
+  for(const r of D.inhouseAd){const k=keyFn(r.date);if(k){g(k).ad_inhouse+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
+  for(const r of D.sueaAd)   {const k=keyFn(r.date);if(k){g(k).ad_suea+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
+  return{map,users};
+}
+function derive(m){
+  const ac=m.aw_consumed||m.aw_apply||0;
+  const adTotal=(m.ad_inhouse||0)+(m.ad_suea||0);
+  return{...m,
+    ad_total:adTotal,
+    aw_apply_r:    m.line_reg        ? m.aw_apply/m.line_reg              : null,
+    aw_attend_r:   m.aw_apply        ? m.aw_attend/m.aw_apply             : null,
+    consult_cvr:   m.aw_attend       ? m.consult_apply/m.aw_attend        : null,
+    reserv_seat_r: m.reserv_consumed ? m.reserv_seated/m.reserv_consumed  : null,
+    contract_r:    m.reserv_seated   ? m.contract/m.reserv_seated         : null,
+    lost_r:        m.reserv_seated   ? m.lost/m.reserv_seated             : null,
+    roas:          adTotal&&m.sales  ? m.sales/adTotal*100                : null,
+    lcpa:          adTotal&&m.line_reg ? adTotal/m.line_reg               : null,
+    cpm:           m.ad_imp>0        ? adTotal/m.ad_imp*1000              : null,
+    cpc:           m.ad_click>0      ? adTotal/m.ad_click                 : null,
+    ctr:           m.ad_imp>0        ? m.ad_click/m.ad_imp                : null,
+  };
+}
+function sumAll(items){const t=emptyM();items.forEach(i=>{Object.keys(t).forEach(k=>{t[k]+=(i.m[k]||0);});});return derive(t);}
+function getItems(){
+  const{map}=aggregate();
+  return Object.entries(map)
+    .filter(([k])=>k && k >= '2026-04')
+    .sort(([a],[b])=>a.localeCompare(b))
+    .map(([k,m])=>({k,m,d:derive(m)}));
+}
+
+// ========== Format ==========
+const yen=v=>v==null?'—':'¥'+Math.round(v).toLocaleString();
+const nm=v=>v==null?'—':Math.round(v).toLocaleString();
+const fp=v=>v==null?'—':(v*100).toFixed(1)+'%';
+const fk=k=>{if(!k)return'—';if(view==='weekly')return k+'〜';return k;};
+
+// ========== Render ==========
+function render(){
+  const p=document.querySelector('.sb-nav-item.on')?.dataset.page||'p1';
+  if(p==='p1')renderP1();else renderP2();
+}
+
+function renderP1(){
+  const el=document.getElementById('p1');
+  const any=D.aw.length||D.consult.length||D.reserv.length||D.customer.length;
+  if(!any){
+    el.innerHTML=`<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h2>CSV 1〜4 をアップロード</h2><p>左のサイドバーからCSVをドロップ<br>次回以降は自動で復元されます</p></div>`;
+    return;
+  }
+  const items=getItems();
+  const tot=sumAll(items);
+  el.innerHTML='';
+  el.appendChild(mkKPI(tot));
+  el.appendChild(mkTable(items));
+}
+
+function mkKPI(t){
+  const wrap=document.createElement('div');
+  wrap.className='sec';
+  const cards=[
+    {l:'広告費合計',v:yen(t.ad_total),            r:t.roas?t.roas.toFixed(1)+'% ROAS':'広告費未入力', c:'v-orange',b:'c-orange'},
+    {l:'インハウス',v:yen(t.ad_inhouse),           r:'',                      c:'v-dim',    b:'c-orange'},
+    {l:'スーア',    v:yen(t.ad_suea),              r:'',                      c:'v-dim',    b:'c-orange'},
+    {l:'LINE登録',  v:nm(t.line_reg)+'人',         r:t.lcpa?'L-CPA '+yen(t.lcpa):'', c:'v-blue',b:'c-blue'},
+    {l:'AW申込',    v:nm(t.aw_apply)+'件',         r:fp(t.aw_apply_r),        c:'v-blue',   b:'c-blue'},
+    {l:'AW消化',    v:nm(t.aw_consumed)+'件',      r:'開催日済',              c:'v-blue',   b:'c-blue'},
+    {l:'AW着席',    v:nm(t.aw_attend)+'件',        r:fp(t.aw_attend_r),       c:'v-blue',   b:'c-blue'},
+    {l:'個別申込',  v:nm(t.consult_apply)+'件',    r:fp(t.consult_cvr),       c:'v-purple', b:'c-purple'},
+    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日済',              c:'v-purple', b:'c-purple'},
+    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:fp(t.reserv_seat_r),     c:'v-purple', b:'c-purple'},
+    {l:'成約',      v:nm(t.contract)+'件',         r:fp(t.contract_r),        c:'v-green',  b:'c-green'},
+    {l:'成約予定',  v:nm(t.contract_pred)+'件',    r:'',                      c:'v-dim',    b:'c-orange'},
+    {l:'失注',      v:nm(t.lost)+'件',             r:fp(t.lost_r),            c:'v-red',    b:'c-red'},
+    {l:'売上',      v:yen(t.sales),                r:t.roas?'ROAS '+t.roas.toFixed(1)+'%':'', c:'v-orange',b:'c-orange'},
+  ];
+  wrap.innerHTML=`<div class="kpi-grid-flat">${cards.map(c=>`
+    <div class="kpi-card-flat ${c.b}">
+      <div class="kpif-label">${c.l}</div>
+      <div class="kpif-val ${c.c}">${c.v}</div>
+      ${c.r?`<div class="kpif-rate">${c.r}</div>`:''}
+    </div>`).join('')}</div>`;
+  return wrap;
+}
+
+function mkFunnel(t){
+  const wrap=document.createElement('div');
+  wrap.className='sec';
+  const max=Math.max(t.line_reg||1,1);
+  const steps=[
+    {l:'LINE登録数',v:t.line_reg,c:'#7aadfa'},
+    {l:'AW申込',v:t.aw_apply,c:'#7aadfa'},
+    {l:'AW消化数',v:t.aw_consumed,c:'#7dcfff'},
+    {l:'AW着席数',v:t.aw_attend,c:'#a78bfa'},
+    {l:'個別相談申込',v:t.consult_apply,c:'#a78bfa'},
+    {l:'個別消化数',v:t.reserv_consumed,c:'#e07850'},
+    {l:'個別着席数',v:t.reserv_seated,c:'#e07850'},
+    {l:'成約',v:t.contract,c:'#6ee7b7'},
+  ];
+  wrap.innerHTML=`<div class="sec-title">ファネル</div>
+  <div class="funnel-wrap">${steps.map(s=>{
+    const p=max>0&&s.v?Math.max(s.v/max*100,1.5):0;
+    return`<div class="funnel-row">
+      <div class="funnel-lbl">${s.l}</div>
+      <div class="funnel-bar-bg"><div class="funnel-bar" style="width:${p}%;background:${s.c}">
+        <span class="funnel-bar-val">${s.v!=null?Math.round(s.v).toLocaleString():''}</span>
+      </div></div>
+      <div class="funnel-num">${s.v!=null?Math.round(s.v).toLocaleString():'—'}</div>
+    </div>`;
+  }).join('')}</div>`;
+  return wrap;
+}
+
+function mkCharts(items){
+  const wrap=document.createElement('div');wrap.className='sec';
+  const inner=document.createElement('div');inner.className='chart-row';
+  const lbs=items.map(i=>fk(i.k));
+  inner.innerHTML=`
+    <div class="chart-card"><div class="chart-ttl">LINE登録 / AW申込 / AW着席</div><div class="chart-area"><canvas id="ch1"></canvas></div></div>
+    <div class="chart-card"><div class="chart-ttl">個別相談申込 / 着席</div><div class="chart-area"><canvas id="ch2"></canvas></div></div>
+    <div class="chart-card"><div class="chart-ttl">成約 / 成約予定</div><div class="chart-area"><canvas id="ch3"></canvas></div></div>`;
+  wrap.appendChild(inner);
+  setTimeout(()=>{
+    ['c1','c2','c3'].forEach(k=>{if(CH[k]){CH[k].destroy();delete CH[k];}});
+    const base={responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#808080',font:{size:10},boxWidth:10}}},
+      scales:{x:{ticks:{color:'#505050',maxRotation:40,font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{ticks:{color:'#505050',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}}}};
+    const mk=(id,ds)=>{const c=document.getElementById(id);if(c)return new Chart(c,{type:'bar',data:{labels:lbs,datasets:ds},options:base});};
+    CH.c1=mk('ch1',[
+      {label:'LINE登録',data:items.map(i=>i.m.line_reg||0),backgroundColor:'rgba(122,173,250,.45)',borderColor:'#7aadfa',borderWidth:1},
+      {label:'AW申込', data:items.map(i=>i.m.aw_apply||0), backgroundColor:'rgba(125,207,255,.35)',borderColor:'#7dcfff',borderWidth:1},
+      {label:'AW着席', data:items.map(i=>i.m.aw_attend||0),backgroundColor:'rgba(167,139,250,.5)',borderColor:'#a78bfa',borderWidth:1},
+    ]);
+    CH.c2=mk('ch2',[
+      {label:'申込',data:items.map(i=>i.m.consult_apply||0),backgroundColor:'rgba(224,120,80,.4)',borderColor:'#e07850',borderWidth:1},
+      {label:'着席',data:items.map(i=>i.m.reserv_seated||0),backgroundColor:'rgba(167,139,250,.5)',borderColor:'#a78bfa',borderWidth:1},
+    ]);
+    CH.c3=mk('ch3',[
+      {label:'成約',  data:items.map(i=>i.m.contract||0),     backgroundColor:'rgba(110,231,183,.5)',borderColor:'#6ee7b7',borderWidth:1},
+      {label:'成約予定',data:items.map(i=>i.m.contract_pred||0),backgroundColor:'rgba(224,120,80,.4)',borderColor:'#e07850',borderWidth:1},
+    ]);
+  },30);
+  return wrap;
+}
+
+const TCOLS=[
+  ['期間','_k','k',''],
+  ['広告費','ad_total','yen','c-orange'],['ROAS','roas','roas','c-orange'],['IMP','ad_imp','num','c-orange'],['Click','ad_click','num','c-orange'],
+  ['LINE登録','line_reg','num','c-blue'],['AW申込','aw_apply','num','c-blue'],
+  ['AW申込率','aw_apply_r','pct','c-blue'],['AW消化','aw_consumed','num','c-blue'],
+  ['AW着席','aw_attend','num','c-blue'],['AW着席率','aw_attend_r','pct','c-blue'],
+  ['個別申込','consult_apply','num','c-purple'],['個別CVR','consult_cvr','pct','c-purple'],
+  ['個別消化','reserv_consumed','num','c-purple'],['個別着席','reserv_seated','num','c-purple'],
+  ['着席CVR','reserv_seat_r','pct','c-purple'],
+  ['成約','contract','num','c-green'],['成約予定','contract_pred','num','c-orange'],
+  ['成約CVR','contract_r','pct','c-green'],['失注','lost','num','c-green'],
+  ['失注率','lost_r','pct','c-green'],['売上','sales','yen','c-orange'],
+];
+const TGRPS=[{l:'',cols:1,cls:'gh-def'},{l:'広告',cols:4,cls:'gh-orange'},{l:'LINE · AW',cols:6,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:5,cls:'gh-green'},{l:'売上',cols:1,cls:'gh-orange'}];
+function fmtC(v,t){if(t==='k')return fk(v);if(t==='yen')return yen(v);if(t==='num')return nm(v);if(t==='pct')return fp(v);if(t==='roas')return v==null?'—':v.toFixed(1)+'%';return v??'—';}
+function mkTable(items){
+  const wrap=document.createElement('div');wrap.className='sec table-card';
+  const gHd=TGRPS.map(g=>`<th colspan="${g.cols}" class="${g.cls}">${g.l}</th>`).join('');
+  const sHd=TCOLS.map(([l,,,c])=>`<th class="ch ${c}">${l}</th>`).join('');
+  const tbody=items.map(({k,m,d})=>{
+    const cells=TCOLS.map(([,key,,])=>{
+      const raw=key==='_k'?k:d[key]??m[key];
+      const t=TCOLS.find(c=>c[1]===key)?.[2]||'';const v=fmtC(raw,t);
+      let ex='';if(key==='sales'&&m.sales>0)ex='pos';if(key==='contract'&&m.contract>0)ex='pos';if(key==='lost_r'&&d.lost_r>0.6)ex='neg';
+      return`<td class="${ex}">${v}</td>`;
+    }).join('');
+    return`<tr>${cells}</tr>`;
+  }).join('');
+  wrap.innerHTML=`<div class="table-bar"><span class="table-ttl">期間別</span><span class="table-meta">${items.length}行</span></div>
+    <div class="tscroll"><table><thead><tr class="gh">${gHd}</tr><tr>${sHd}</tr></thead><tbody>${tbody}</tbody></table></div>`;
+  return wrap;
+}
+
+// ========== Page 2 ==========
+function renderP2(){ renderMedia(); }
+function renderMedia(){
+  const el=document.getElementById('p2');
+  const inhTotal=D.inhouseAd.reduce((s,r)=>s+r.cost,0);
+  const sueaTotal=D.sueaAd.reduce((s,r)=>s+r.cost,0);
+  const inhImp=D.inhouseAd.reduce((s,r)=>s+r.imp,0);
+  const sueaImp=D.sueaAd.reduce((s,r)=>s+r.imp,0);
+  const inhClick=D.inhouseAd.reduce((s,r)=>s+r.click,0);
+  const sueaClick=D.sueaAd.reduce((s,r)=>s+r.click,0);
+
+  const media=[
+    {k:'自社（インハウス）', cost:inhTotal,  imp:inhImp,  click:inhClick,  note:'「採用」除外済', has:D.inhouseAd.length>0},
+    {k:'スーア',             cost:sueaTotal, imp:sueaImp, click:sueaClick, note:'「launch」のみ',  has:D.sueaAd.length>0},
+    {k:'有川さんMeta',       cost:null,      imp:null,    click:null,      note:'準備中',           has:false},
+  ];
+
+  const hd=['媒体','広告費','IMP','Click','CPM','CPC','備考'].map(l=>`<th class="ch">${l}</th>`).join('');
+  const bd=media.map(m=>{
+    const cpm=m.imp>0?m.cost/m.imp*1000:null;
+    const cpc=m.click>0?m.cost/m.click:null;
+    return`<tr>
+      <td style="font-weight:500">${m.k}${!m.has?'<span style="font-size:9px;color:var(--t3);margin-left:6px">未読込</span>':''}</td>
+      <td class="${m.cost>0?'pos':''}">${yen(m.cost)}</td>
+      <td>${nm(m.imp)}</td>
+      <td>${nm(m.click)}</td>
+      <td>${yen(cpm)}</td>
+      <td>${yen(cpc)}</td>
+      <td style="color:var(--t3);font-size:11px">${m.note}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`<div class="table-card">
+    <div class="table-bar"><span class="table-ttl">媒体別 広告費</span><span class="table-meta">合計 ${yen(inhTotal+sueaTotal)}</span></div>
+    <div class="tscroll"><table><thead><tr>${hd}</tr></thead><tbody>${bd}</tbody></table></div>
+  </div>`;
+}
+
+// ========== File handlers ==========
+async function handleFile(file,key,slotNum,parser){
+  try{
+    const raw=await readFile(file);
+    D[key]=parser(raw);
+    saveData(key);
+    markSlot(slotNum,`${D[key].length}件`);
+    render();
+  }catch(e){alert('エラー: '+e.message);console.error(e);}
+}
+function setupSlot(slotId,inputId,clearId,key,num,parser){
+  const sl=document.getElementById(slotId);
+  const inp=document.getElementById(inputId);
+  const clr=document.getElementById(clearId);
+  const go=f=>{handleFile(f,key,num,parser);};
+  inp.addEventListener('change',e=>{if(e.target.files[0])go(e.target.files[0]);});
+  sl.addEventListener('dragover',e=>{e.preventDefault();sl.style.borderColor='var(--acc)';});
+  sl.addEventListener('dragleave',()=>{sl.style.borderColor='';});
+  sl.addEventListener('drop',e=>{e.preventDefault();sl.style.borderColor='';const f=e.dataTransfer.files[0];if(f)go(f);});
+  clr.addEventListener('click',e=>{e.stopPropagation();clearData(key);});
+}
+setupSlot('slot1','f1','sc1','aw',1,parseAW);
+setupSlot('slot2','f2','sc2','consult',2,parseConsult);
+setupSlot('slot3','f3','sc3','reserv',3,parseReserv);
+setupSlot('slot4','f4','sc4','customer',4,parseCustomer);
+setupSlot('slot5','f5','sc5','inhouseAd',5,parseInhouse);
+setupSlot('slot6','f6','sc6','sueaAd',6,parseSuea);
+
+// スプシ自動読み込みボタン
+document.getElementById('btnFetchAll').addEventListener('click',async()=>{
+  const btn=document.getElementById('btnFetchAll');
+  btn.textContent='読込中...';btn.disabled=true;
+  let ok=0,err=[];
+  try{
+    const r1=await fetchSheetCSV(SHEET_INHOUSE);
+    D.inhouseAd=parseInhouse(r1);
+    saveData('inhouseAd');
+    markSlot(5,`${D.inhouseAd.length}件`);
+    ok++;
+  }catch(e){err.push('インハウス: '+e.message);}
+  try{
+    const r2=await fetchSheetCSV(SHEET_SUEA);
+    D.sueaAd=parseSuea(r2);
+    saveData('sueaAd');
+    markSlot(6,`${D.sueaAd.length}件`);
+    ok++;
+  }catch(e){err.push('スーア: '+e.message);}
+  btn.textContent=`↓ スプシから広告費を読込`;btn.disabled=false;
+  if(err.length) alert('エラー:\n'+err.join('\n')+'\n\nCORSエラーの場合はCSVをダウンロードしてスロットにドロップしてください');
+  render();
+});
+
+// ========== Nav ==========
+document.querySelectorAll('.sb-nav-item').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.sb-nav-item').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');
+    const pg=btn.dataset.page;
+    document.getElementById(pg).classList.add('on');
+    document.getElementById('pageTitle').textContent=btn.textContent.trim();
+    document.getElementById('headerCtrl').style.display=pg==='p1'?'flex':'none';
+    if(pg==='p2')renderP2();
+  });
+});
+document.getElementById('vPills').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#vPills button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');view=b.dataset.v;renderP1();
+});
+document.getElementById('aTgl').addEventListener('change',e=>{
+  agency=e.target.checked;
+  document.getElementById('lOwn').classList.toggle('on',!agency);
+  document.getElementById('lAg').classList.toggle('on',agency);
+  renderP1();
+});
+
+// ========== Init ==========
+loadAllFromStorage();
+if(D.aw.length||D.consult.length||D.reserv.length||D.customer.length||D.inhouseAd.length||D.sueaAd.length)render();
+</script>
+</body>
+</html>
