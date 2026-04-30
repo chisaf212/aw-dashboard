@@ -297,6 +297,9 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
   </div>
 
   <div class="sb-divider"></div>
+  <div style="padding:0 6px 4px">
+    <button id="btnClearAll" style="width:100%;padding:6px;background:transparent;border:1px solid var(--bd);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer;font-family:inherit">全データをリセット</button>
+  </div>
   <div class="sb-last" id="lastSaved">未保存</div>
 </aside>
 
@@ -354,7 +357,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v1.9';
+const CACHE_VER='v2.0';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -948,6 +951,13 @@ document.getElementById('aTgl').addEventListener('change',e=>{
 // ========== Init ==========
 loadAllFromStorage();
 if(D.aw.length||D.consult.length||D.reserv.length||D.customer.length||D.inhouseAd.length||D.sueaAd.length)render();
+
+document.getElementById('btnClearAll').addEventListener('click',()=>{
+  if(!confirm('全データをリセットしますか？')) return;
+  Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
+  localStorage.removeItem('aw_ver');
+  location.reload();
+});
 </script>
 </body>
 </html>
