@@ -303,7 +303,7 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
   <div class="sb-section">自動読込</div>
   <div style="padding:0 8px 8px">
     <button id="btnFetchAll" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:11px;cursor:pointer;font-family:inherit">
-      ↓ スプシから広告費を読込
+      ↓ 広告費を今すぐ更新
     </button>
   </div>
 
@@ -368,7 +368,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.5';
+const CACHE_VER='v2.6';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -1036,6 +1036,25 @@ document.getElementById('aTgl').addEventListener('change',e=>{
 // ========== Init ==========
 loadAllFromStorage();
 if(D.aw.length||D.consult.length||D.reserv.length||D.customer.length||D.inhouseAd.length||D.sueaAd.length)render();
+
+// 広告費をページロード時に自動フェッチ（24時間キャッシュ）
+async function autoFetchAds(){
+  const lastFetch=localStorage.getItem('aw_ads_fetched');
+  const now=Date.now();
+  // 24時間以内にフェッチ済みならスキップ
+  if(lastFetch&&now-Number(lastFetch)<86400000&&D.inhouseAd.length&&D.sueaAd.length) return;
+  try{
+    const [r1,r2]=await Promise.all([
+      fetchSheetCSV(SHEET_INHOUSE).catch(()=>null),
+      fetchSheetCSV(SHEET_SUEA).catch(()=>null),
+    ]);
+    let updated=false;
+    if(r1&&r1.length>2){D.inhouseAd=parseInhouse(r1);saveData('inhouseAd');markSlot(5,`${D.inhouseAd.length}件`);updated=true;}
+    if(r2&&r2.length>2){D.sueaAd=parseSuea(r2);saveData('sueaAd');markSlot(6,`${D.sueaAd.length}件`);updated=true;}
+    if(updated){localStorage.setItem('aw_ads_fetched',String(now));render();}
+  }catch(e){console.warn('広告費自動取得エラー:',e);}
+}
+autoFetchAds();
 
 document.getElementById('btnClearAll').addEventListener('click',()=>{
   if(!confirm('全データをリセットしますか？')) return;
