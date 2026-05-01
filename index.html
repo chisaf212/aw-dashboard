@@ -286,6 +286,17 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
       </div>
       <button class="slot-clear" id="sc7" title="削除">×</button>
     </div>
+    <!-- スロット8: ウェビナーリスナー（AW消化・着席用） -->
+    <div class="slot" id="slot8">
+      <input type="file" id="f8" accept=".csv,.xlsx">
+      <div class="slot-num">8</div>
+      <div class="slot-info">
+        <div class="slot-label">ウェビナーリスナー</div>
+        <div class="slot-sub">AW消化数・着席数</div>
+        <div class="slot-ok" id="so8"></div>
+      </div>
+      <button class="slot-clear" id="sc8" title="削除">×</button>
+    </div>
   </div>
 
   <div class="sb-divider"></div>
@@ -341,7 +352,7 @@ td.pos{color:var(--gr)}td.neg{color:var(--rd)}td.dim{color:var(--t3)}
 
 <script>
 // ========== State ==========
-const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[],arikawa:[]};
+const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[],arikawa:[],webinar:[]};
 // 有川さんMeta 4月固定値（CSVがない場合に使用）
 const ARIKAWA_MANUAL={cost:6109576,reserv:384,reservCPA:15910,note:'4月実績（手数料込み）'};
 let view='monthly',agency=false;
@@ -355,9 +366,9 @@ const SHEET_INHOUSE='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=157755168';
 
 // ========== LocalStorage ==========
-const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
+const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.4';
+const CACHE_VER='v2.5';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -373,6 +384,7 @@ function saveData(key){
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='arikawa')   mini=D.arikawa.map(r=>({d:r.date,c:r.cost}));
+    if(key==='webinar')   mini=D.webinar.map(r=>({d:r.schedDate,s:r.status,k:r.applyDate}));
     localStorage.setItem(STORE_KEYS[key],JSON.stringify(mini));
     updateSavedTime();
   }catch(e){console.warn('Storage error:',e);}
@@ -406,13 +418,14 @@ function loadAllFromStorage(){
     if(D.inhouseAd.length) markSlot(5,`${D.inhouseAd.length}件`);
     if(D.sueaAd.length)    markSlot(6,`${D.sueaAd.length}件`);
     if(D.arikawa.length)   markSlot(7,`${D.arikawa.length}件`);
+    if(D.webinar.length)   markSlot(8,`${D.webinar.length}件`);
   }catch(e){console.warn('Storage load error:',e);}
 }
 
 function clearData(key){
   D[key]=[];
   localStorage.removeItem(STORE_KEYS[key]);
-  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6,arikawa:7}[key];
+  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6,arikawa:7,webinar:8}[key];
   const sl=document.getElementById(`slot${idx}`);
   sl.classList.remove('ok');
   document.getElementById(`so${idx}`).textContent='';
@@ -484,11 +497,30 @@ async function readFile(file){
 
 // ========== Parsers ==========
 function parseAW(rows){
-  return rows.slice(2).map(r=>({
-    mgmtId:String(r[3]||'').trim(),
-    flowDate:toYMD(r[4]),applyDate:toYMD(r[5]),schedDate:toYMD(r[6]),
-    attended:String(r[2]||'')==='1',isConsumed:isPast(toYMD(r[6])),
-  })).filter(r=>r.flowDate);
+  const data=rows.slice(2).filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()));
+  if(!data.length) return [];
+  // フォーマット判定：col3が'0'/'1'なら新フォーマット(タグ列)、日付なら旧フォーマット
+  const isNewFmt=data[0]&&(data[0][3]==='0'||data[0][3]==='1');
+  if(isNewFmt){
+    // 新: ID,表示名,本名,AW申込タグ,AW着席タグ,個別相談タグ,管理ID
+    return data.map(r=>({
+      mgmtId:   String(r[6]||'').trim(),
+      flowDate: '2026-04-01',            // 月次集計用の固定値
+      applyDate:r[3]==='1'?'2026-04-01':null,
+      schedDate:null,
+      attended: String(r[4]||'')==='1',
+      isConsumed:false,                  // 消化数はウェビナーCSVで計算
+    })).filter(r=>r.mgmtId);
+  }else{
+    // 旧: ID,表示名,AW着席タグ,管理ID,LINE流入日,AW申込日時,開催日時
+    return data.map(r=>({
+      mgmtId:   String(r[3]||'').trim(),
+      flowDate: toYMD(r[4]),
+      applyDate:toYMD(r[5]),schedDate:toYMD(r[6]),
+      attended: String(r[2]||'')==='1',
+      isConsumed:isPast(toYMD(r[6])),
+    })).filter(r=>r.flowDate);
+  }
 }
 function parseConsult(rows){
   // 新フォーマット: ID,表示名,本名,ステータス：個別相談申込(0/1),管理ID
@@ -559,6 +591,18 @@ function parseSuea(rows){
       click:    np(r[6]),
     }))
     .filter(r=>r.date&&r.cost>0);
+}
+
+// CSV08: ウェビナーリスナー（AW消化・着席用）
+// 申込ID,アカウント名,日程,申込日時,ステータス(参加/キャンセル/--),...
+function parseWebinar(rows){
+  const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
+  return rows.filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim())&&r[2]&&isDate(r[2])).map(r=>({
+    schedDate: r[2]?r[2].slice(0,10):null,  // 開催日
+    applyDate: r[3]?r[3].slice(0,10):null,  // 申込日
+    status:    String(r[4]||'').trim(),       // 参加/キャンセル/--
+    isConsumed:r[2]?isPast(r[2].slice(0,10)):false,
+  })).filter(r=>r.schedDate);
 }
 
 // CSV07: 有川さんMeta広告費（フォーマット未定のため日付+消化金額を柔軟に読む）
@@ -658,6 +702,25 @@ function aggregate(){
   // 広告費集計
   for(const r of D.inhouseAd){const k=keyFn(r.date);if(k){g(k).ad_inhouse+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
   for(const r of D.sueaAd)   {const k=keyFn(r.date);if(k){g(k).ad_suea+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
+  // ウェビナーリスナーCSV → AW申込・消化・着席（日別集計可能）
+  if(D.webinar.length){
+    // ウェビナーCSVがあれば、awUsersのAW指標を上書き
+    const wMap={};
+    for(const r of D.webinar){
+      const k=keyFn(r.applyDate||r.schedDate);if(!k)continue;
+      if(!wMap[k])wMap[k]={apply:0,consumed:0,attend:0};
+      wMap[k].apply++;
+      if(r.isConsumed)wMap[k].consumed++;
+      if(r.status==='参加')wMap[k].attend++;
+    }
+    // 既存のaw_apply/aw_consumed/aw_attendをウェビナーCSVの値で置換
+    for(const[k,wm]of Object.entries(wMap)){
+      if(!map[k])map[k]=emptyM();
+      map[k].aw_apply=wm.apply;
+      map[k].aw_consumed=wm.consumed;
+      map[k].aw_attend=wm.attend;
+    }
+  }
   return{map,users};
 }
 function derive(m){
@@ -923,6 +986,7 @@ setupSlot('slot4','f4','sc4','customer',4,parseCustomer);
 setupSlot('slot5','f5','sc5','inhouseAd',5,parseInhouse);
 setupSlot('slot6','f6','sc6','sueaAd',6,parseSuea);
 setupSlot('slot7','f7','sc7','arikawa',7,parseArikawa);
+setupSlot('slot8','f8','sc8','webinar',8,parseWebinar);
 
 // スプシ自動読み込みボタン
 document.getElementById('btnFetchAll').addEventListener('click',async()=>{
