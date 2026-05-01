@@ -357,7 +357,7 @@ const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGe
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.3';
+const CACHE_VER='v2.4';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -491,9 +491,16 @@ function parseAW(rows){
   })).filter(r=>r.flowDate);
 }
 function parseConsult(rows){
+  // 新フォーマット: ID,表示名,本名,ステータス：個別相談申込(0/1),管理ID
+  // 旧フォーマット: ID,表示名,本名,着席タグ,管理ID,申込日時
+  // col3が'0'か'1'なら新フォーマット
+  const isNewFmt = rows.slice(2).some(r=>r[3]==='1'||r[3]==='0');
   return rows.slice(2)
-    .filter(r=>r[5])
-    .map(r=>({mgmtId:String(r[4]||'').trim(),name:normName(r[2]),applyDate:toYMD(r[5])}));
+    .filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()))
+    .map(r=>isNewFmt
+      ?{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:r[3]==='1'}
+      :{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:!!r[5], applyDate:toYMD(r[5])}
+    ).filter(r=>r.mgmtId||r.name);
 }
 function parseReserv(rows){
   return rows.slice(1).map(r=>({
@@ -591,40 +598,49 @@ function buildLinked(){
   for(const r of D.aw){if(r.mgmtId)awById[r.mgmtId]=r;}
   // AW着席済み（attended=true）の管理IDのみに絞る→消化/着席の過剰カウントを防ぐ
   const attendedIds=new Set(D.aw.filter(r=>r.attended&&r.mgmtId).map(r=>r.mgmtId));
-  const nameToMgmt={};
-  for(const r of D.consult){if(r.mgmtId&&attendedIds.has(r.mgmtId)&&r.name)nameToMgmt[r.name]=r.mgmtId;}
-  const reservByName={};
-  for(const r of D.reserv){if(!reservByName[r.name])reservByName[r.name]=[];reservByName[r.name].push(r);}
+  // 個別相談申込者の本名セット（applied=trueのみ）
+  const consultAppliedNames=new Set(D.consult.filter(r=>r.applied&&r.name).map(r=>r.name));
   const custByName={};
   for(const r of D.customer){if(r.name&&!custByName[r.name])custByName[r.name]=r;}
 
-  return D.aw.map(aw=>{
+  // D.awベースのループ（LINE登録・AW指標用）
+  const awUsers=D.aw.map(aw=>{
     const mid=aw.mgmtId;
-    // AW着席済みの人のみ個別相談・予約を検索する
-    const isAttended=aw.attended&&mid&&attendedIds.has(mid);
-    const cR=isAttended?D.consult.find(c=>c.mgmtId===mid&&c.applyDate):null;
-    const name=cR?.name||'';
-    // 顧客管理シートから消化・着席を取得（お客様名=本名で照合）
-    const cu=custByName[name];
-    // 個別消化 = 顧客管理シートに存在 かつ 面談日≤今日
-    // 個別着席 = 着座ステータス（顧客管理シートの「着座」）
+    const cu=null; // AW側では成約等は別途計算
     return{
       mgmtId:mid,flowDate:aw.flowDate,
       awApplyDate:aw.applyDate,awConsumed:aw.isConsumed,awAttended:aw.attended,
-      consultApply:!!cR,consultDate:cR?.applyDate||null,
-      reservConsumed:!!(cu?.isConsumed),         // 面談日≤今日（顧客管理シート）
-      reservSeated:  cu?.seatST==='着座'||false, // 着座ステータス（顧客管理シート）
-      reservDate:    cu?.meetDate||null,
-      contracted:cu?ST_C.includes(cu.afterST):false,
-      contractPred:cu?ST_PRED.includes(cu.afterST):false,
-      lost:cu?ST_LOST.includes(cu.afterST):false,
-      pending:cu?.afterST==='保留'||false,
-      cooling:cu?.afterST==='クーリングオフ'||false,
-      sales:(cu&&ST_C.includes(cu.afterST))?planPrice(cu.plan):0,
-      staff:cu?.staff||'',route:cu?.route||'',
-      plan:cu?.plan||'',meetDate:cu?.meetDate||null,seatST:cu?.seatST||'',
+      consultApply:false,consultDate:null,
+      reservConsumed:false,reservSeated:false,reservDate:null,
+      contracted:false,contractPred:false,lost:false,pending:false,cooling:false,sales:0,
+      staff:'',route:'',plan:'',meetDate:null,seatST:'',
     };
   });
+
+  // 個別相談申込者（本名ベース）→顧客管理で消化・着席・成約
+  const consultUsers=D.consult
+    .filter(r=>r.applied&&r.name)
+    .map(r=>{
+      const cu=custByName[r.name];
+      return{
+        mgmtId:r.mgmtId||'',flowDate:null,
+        awApplyDate:null,awConsumed:false,awAttended:false,
+        consultApply:true,consultDate:'2026-04-01',
+        reservConsumed:!!(cu?.isConsumed),
+        reservSeated:cu?.seatST==='着座'||false,
+        reservDate:cu?.meetDate||null,
+        contracted:cu?ST_C.includes(cu.afterST):false,
+        contractPred:cu?ST_PRED.includes(cu.afterST):false,
+        lost:cu?ST_LOST.includes(cu.afterST):false,
+        pending:cu?.afterST==='保留'||false,
+        cooling:cu?.afterST==='クーリングオフ'||false,
+        sales:(cu&&ST_C.includes(cu.afterST))?planPrice(cu.plan):0,
+        staff:cu?.staff||'',route:cu?.route||'',
+        plan:cu?.plan||'',meetDate:cu?.meetDate||null,seatST:cu?.seatST||'',
+      };
+    });
+
+  return [...awUsers,...consultUsers];
 }
 
 // ========== Aggregate ==========
