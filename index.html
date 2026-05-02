@@ -800,8 +800,11 @@ function aggregate(){
   return{map,users};
 }
 function derive(m){
-  const adTotal=(m.ad_inhouse||0)+(m.ad_suea||0)+(m.ad_arikawa||0);
+  // スーアは手数料なし→代理店トグルONで1.2倍、有川さん・自社は手数料込みなのでそのまま
+  const suea_adj=(m.ad_suea||0)*(agency?1.2:1);
+  const adTotal=(m.ad_inhouse||0)+suea_adj+(m.ad_arikawa||0);
   return{...m,
+    ad_suea_adj:suea_adj,
     ad_total:adTotal,
     aw_apply_r:    m.line_reg        ? m.aw_apply/m.line_reg              : null, // 申込率
     aw_consume_r:  m.aw_apply        ? m.aw_consumed/m.aw_apply           : null, // 予約率（消化/申込）
@@ -870,7 +873,7 @@ function mkKPI(t){
     {l:'売上',        v:yen(t.sales),               r:'',                                               c:'v-green'},
     {l:'広告費計',    v:yen(t.ad_total),            r:t.roas?'ROAS '+t.roas.toFixed(1)+'%':'',         c:'v-orange'},
     {l:'自社',        v:yen(t.ad_inhouse),          r:'インハウス',                                     c:'v-dim'},
-    {l:'スーア',      v:yen(t.ad_suea),             r:'',                                               c:'v-dim'},
+    {l:'スーア',      v:yen(t.ad_suea_adj),         r:agency?'+20%手数料込':'手数料別',                 c:'v-dim'},
     {l:'有川さん',    v:yen(t.ad_arikawa),          r:D.arikawa.length?'CSV':'固定値',                  c:'v-dim'},
   ];
   wrap.innerHTML=`<div class="kpi-grid-flat">${cards.map(c=>`
@@ -946,7 +949,7 @@ function mkCharts(items){
 const TCOLS=[
   ['期間','_k','k',''],
   ['LINE流入','line_reg','num','c-blue'],
-  ['広告費計','ad_total','yen','c-orange'],['自社','ad_inhouse','yen','c-orange'],['スーア','ad_suea','yen','c-orange'],['有川さん','ad_arikawa','yen','c-orange'],['ROAS','roas','roas','c-orange'],
+  ['広告費計','ad_total','yen','c-orange'],['自社','ad_inhouse','yen','c-orange'],['スーア','ad_suea_adj','yen','c-orange'],['有川さん','ad_arikawa','yen','c-orange'],['ROAS','roas','roas','c-orange'],
   ['AW申込','aw_apply','num','c-blue'],['AW消化','aw_consumed','num','c-blue'],
   ['予約率','aw_consume_r','pct','c-blue'],
   ['AW着席','aw_attend','num','c-blue'],['着席率','aw_attend_r','pct','c-blue'],
