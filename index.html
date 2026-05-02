@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.0';
+const CACHE_VER='v3.1';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -538,25 +538,28 @@ async function readFile(file){
 function parseAW(rows){
   const data=rows.slice(2).filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()));
   if(!data.length) return [];
-  // フォーマット判定：col3が'0'/'1'なら新フォーマット(タグ列)、日付なら旧フォーマット
-  const isNewFmt=data[0]&&(data[0][3]==='0'||data[0][3]==='1');
-  if(isNewFmt){
-    // 新: ID,表示名,本名,AW申込タグ,AW着席タグ,個別相談タグ,管理ID
+  // フォーマット判定
+  // 現行: col2=AW申込(0/1), col3=AW着席(0/1), col4=個別相談(0/1), col5=管理ID, col6=申込日時
+  // 旧:   col2=AW着席(0/1), col3=管理ID, col4=流入日, col5=申込日時, col6=開催日時
+  const c2is01=data[0][2]==='0'||data[0][2]==='1';
+  const c3isDate=data[0][3]&&/[\d年月]/.test(String(data[0][3]));
+  if(c2is01&&!c3isDate){
+    // 現行フォーマット: LINE登録数=全員, AW申込=col2, AW着席=col3, 管理ID=col5
     return data.map(r=>({
-      mgmtId:   String(r[6]||'').trim(),
-      flowDate: '2026-04-01',            // 月次集計用の固定値
-      applyDate:r[3]==='1'?'2026-04-01':null,
+      mgmtId:   String(r[5]||'').trim(),
+      flowDate: '2026-04-01',
+      applyDate:r[2]==='1'?(toYMD(r[6])||'2026-04-01'):null,
       schedDate:null,
-      attended: String(r[4]||'')==='1',
-      isConsumed:false,                  // 消化数はウェビナーCSVで計算
+      attended: r[3]==='1',
+      isConsumed:false,
     })).filter(r=>r.mgmtId);
   }else{
-    // 旧: ID,表示名,AW着席タグ,管理ID,LINE流入日,AW申込日時,開催日時
+    // 旧フォーマット: col2=AW着席, col3=管理ID, col4=流入日, col5=申込日, col6=開催日
     return data.map(r=>({
       mgmtId:   String(r[3]||'').trim(),
       flowDate: toYMD(r[4]),
       applyDate:toYMD(r[5]),schedDate:toYMD(r[6]),
-      attended: String(r[2]||'')==='1',
+      attended: r[2]==='1',
       isConsumed:isPast(toYMD(r[6])),
     })).filter(r=>r.flowDate);
   }
