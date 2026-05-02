@@ -422,7 +422,7 @@ function saveData(key){
   try{
     let mini;
     if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
-    if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate}));
+    if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate,ap:r.applied?1:0}));
     if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
@@ -440,7 +440,7 @@ function loadAllFromStorage(){
     if(r1) D.aw=r1.map(r=>({mgmtId:r.m,flowDate:r.f,applyDate:r.a,schedDate:r.s,attended:!!r.t,isConsumed:isPastFn(r.s?toJaYMD(r.s):null)}));
 
     const r2=JSON.parse(localStorage.getItem('aw2')||'null');
-    if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d}));
+    if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d,applied:!!r.ap}));
 
     const r4=JSON.parse(localStorage.getItem('aw4')||'null');
     if(r4) D.customer=r4.map(r=>({name:r.n,staff:r.sf,meetDate:r.d,route:r.rt,seatST:r.st,afterST:r.as,plan:r.pl,isConsumed:isPastFn(r.d)}));
