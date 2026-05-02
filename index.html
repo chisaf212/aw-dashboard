@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.5';
+const CACHE_VER='v3.6';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -421,13 +421,13 @@ if(localStorage.getItem('aw_ver')!==CACHE_VER){
 function saveData(key){
   try{
     let mini;
-    if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
+    if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,nm:r.name||'',f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
     if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate,ap:r.applied?1:0}));
     if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='arikawa')   mini=D.arikawa.map(r=>({d:r.date,c:r.cost}));
-    if(key==='webinar')   mini=D.webinar.map(r=>({d:r.schedDate,s:r.status,k:r.applyDate}));
+    if(key==='webinar')   mini=D.webinar.map(r=>({n:r.name||'',d:r.schedDate,s:r.status,k:r.applyDate}));
     localStorage.setItem(STORE_KEYS[key],JSON.stringify(mini));
     updateSavedTime();
   }catch(e){console.warn('Storage error:',e);}
@@ -437,7 +437,7 @@ function loadAllFromStorage(){
   const isPastFn=d=>d?new Date(d+'T23:59:59')<=TODAY:false;
   try{
     const r1=JSON.parse(localStorage.getItem('aw1')||'null');
-    if(r1) D.aw=r1.map(r=>({mgmtId:r.m,flowDate:r.f,applyDate:r.a,schedDate:r.s,attended:!!r.t,isConsumed:isPastFn(r.s?toJaYMD(r.s):null)}));
+    if(r1) D.aw=r1.map(r=>({mgmtId:r.m,name:r.nm||'',flowDate:r.f,applyDate:r.a,schedDate:r.s,attended:!!r.t,isConsumed:isPastFn(r.s?toJaYMD(r.s):null)}));
 
     const r2=JSON.parse(localStorage.getItem('aw2')||'null');
     if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d,applied:!!r.ap}));
@@ -449,6 +449,8 @@ function loadAllFromStorage(){
     if(r5) D.inhouseAd=r5.map(r=>({date:r.d,cost:r.c,imp:r.i,click:r.cl}));
     const r6=JSON.parse(localStorage.getItem('aw6')||'null');
     if(r6) D.sueaAd=r6.map(r=>({date:r.d,cost:r.c,imp:r.i,click:r.cl}));
+    const r8=JSON.parse(localStorage.getItem('aw8')||'null');
+    if(r8) D.webinar=r8.map(r=>({name:r.n||'',schedDate:r.d,status:r.s,applyDate:r.k,isConsumed:isPastFn(r.d)}));
 
     // スロット表示更新
     if(D.aw.length)        markSlot(1,`${D.aw.length}件`);
@@ -549,6 +551,7 @@ function parseAW(rows){
     const applyCol=mgmtCol+(hasFlowDate?2:1); // 流入日あり→+2, なし→+1
     return data.map(r=>({
       mgmtId:   String(r[mgmtCol]||'').trim(),
+      name:     normName(r[1]),
       flowDate: hasFlowDate?(toYMD(r[mgmtCol+1])||'2026-04-01'):'2026-04-01',
       applyDate:r[2]==='1'?(toYMD(r[applyCol])||'2026-04-01'):null,
       schedDate:null,
@@ -635,6 +638,7 @@ function parseSuea(rows){
 function parseWebinar(rows){
   const isDate=v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||'').trim());
   return rows.filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim())&&r[2]&&isDate(r[2])).map(r=>({
+    name:      normName(r[1]),               // アカウント名（D.awの表示名と照合）
     schedDate: r[2]?r[2].slice(0,10):null,  // 開催日
     applyDate: r[3]?r[3].slice(0,10):null,  // 申込日
     status:    String(r[4]||'').trim(),       // 参加/キャンセル/--
@@ -746,12 +750,16 @@ function aggregate(){
   // 広告費集計
   for(const r of D.inhouseAd){const k=keyFn(r.date);if(k){g(k).ad_inhouse+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
   for(const r of D.sueaAd)   {const k=keyFn(r.date);if(k){g(k).ad_suea+=r.cost;g(k).ad_imp+=r.imp;g(k).ad_click+=r.click;}}
-  // ウェビナーリスナーCSV → AW申込・消化・着席（日別集計可能）
+  // ウェビナーリスナーCSV → AW申込・消化・着席
+  // D.awの名前→LINE流入日マップで照合し、流入日基準で集計
   if(D.webinar.length){
-    // ウェビナーCSVがあれば、awUsersのAW指標を上書き
+    const nameToFlow={};
+    for(const r of D.aw){if(r.name&&r.flowDate)nameToFlow[r.name]=r.flowDate;}
     const wMap={};
     for(const r of D.webinar){
-      const k=keyFn(r.applyDate||r.schedDate);if(!k)continue;
+      // 名前でD.awの流入日を検索、なければapplyDate→schedDateにフォールバック
+      const fd=r.name?nameToFlow[r.name]:null;
+      const k=keyFn(fd||r.applyDate||r.schedDate);if(!k)continue;
       if(!wMap[k])wMap[k]={apply:0,consumed:0,attend:0};
       wMap[k].apply++;
       if(r.isConsumed)wMap[k].consumed++;
