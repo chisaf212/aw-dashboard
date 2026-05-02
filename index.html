@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.2';
+const CACHE_VER='v3.3';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -538,16 +538,18 @@ async function readFile(file){
 function parseAW(rows){
   const data=rows.slice(2).filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()));
   if(!data.length) return [];
-  // フォーマット判定: col5が8桁以上の管理IDなら現行フォーマット
-  // 現行: col2=AW申込(0/1), col3=AW着席(0/1), col4=個別相談(0/1), col5=管理ID(12桁), col6=申込日時
-  // 旧:   col2=AW着席(0/1), col3=管理ID, col4=流入日, col5=申込日時, col6=開催日時
-  const isCurrent=/^\d{8,}$/.test(String(data[0][5]||'').trim());
-  if(isCurrent){
-    // 現行フォーマット: LINE登録数=全員(管理IDあり全行), AW申込=col2, AW着席=col3, 管理ID=col5
+  // 管理ID列を自動検出（8桁以上の数字）: col4 or col5
+  // 現行A: col2=AW申込, col3=AW着席, col4=管理ID, col5=申込日時
+  // 現行B: col2=AW申込, col3=AW着席, col4=個別相談, col5=管理ID, col6=申込日時
+  // 旧:    col2=AW着席, col3=管理ID, col4=流入日, col5=申込日, col6=開催日
+  const mgmtCol=/^\d{8,}$/.test(String(data[0][4]||'').trim())?4
+               :/^\d{8,}$/.test(String(data[0][5]||'').trim())?5
+               :null;
+  if(mgmtCol!==null){
     return data.map(r=>({
-      mgmtId:   String(r[5]||'').trim(),
+      mgmtId:   String(r[mgmtCol]||'').trim(),
       flowDate: '2026-04-01',
-      applyDate:r[2]==='1'?(toYMD(r[6])||'2026-04-01'):null,
+      applyDate:r[2]==='1'?(toYMD(r[mgmtCol+1])||'2026-04-01'):null,
       schedDate:null,
       attended: r[3]==='1',
       isConsumed:false,
