@@ -776,21 +776,18 @@ function aggregate(){
   return{map,users};
 }
 function derive(m){
-  const ac=m.aw_consumed||m.aw_apply||0;
   const adTotal=(m.ad_inhouse||0)+(m.ad_suea||0);
   return{...m,
     ad_total:adTotal,
-    aw_apply_r:    m.line_reg        ? m.aw_apply/m.line_reg              : null,
-    aw_attend_r:   m.aw_apply        ? m.aw_attend/m.aw_apply             : null,
+    aw_apply_r:    m.line_reg        ? m.aw_apply/m.line_reg              : null, // 申込率
+    aw_consume_r:  m.aw_apply        ? m.aw_consumed/m.aw_apply           : null, // 予約率（消化/申込）
+    aw_attend_r:   m.aw_consumed     ? m.aw_attend/m.aw_consumed          : null, // 着席率（着席/消化）
     consult_cvr:   m.aw_attend       ? m.consult_apply/m.aw_attend        : null,
     reserv_seat_r: m.reserv_consumed ? m.reserv_seated/m.reserv_consumed  : null,
     contract_r:    m.reserv_seated   ? m.contract/m.reserv_seated         : null,
     lost_r:        m.reserv_seated   ? m.lost/m.reserv_seated             : null,
     roas:          adTotal&&m.sales  ? m.sales/adTotal*100                : null,
     lcpa:          adTotal&&m.line_reg ? adTotal/m.line_reg               : null,
-    cpm:           m.ad_imp>0        ? adTotal/m.ad_imp*1000              : null,
-    cpc:           m.ad_click>0      ? adTotal/m.ad_click                 : null,
-    ctr:           m.ad_imp>0        ? m.ad_click/m.ad_imp                : null,
   };
 }
 function sumAll(items){const t=emptyM();items.forEach(i=>{Object.keys(t).forEach(k=>{t[k]+=(i.m[k]||0);});});return derive(t);}
@@ -832,18 +829,20 @@ function mkKPI(t){
   const wrap=document.createElement('div');
   wrap.className='sec';
   const cards=[
-    {l:'売上',      v:yen(t.sales),                r:t.roas?'ROAS '+t.roas.toFixed(1)+'%':'',c:'v-green'},
-    {l:'広告費',    v:yen(t.ad_total),             r:t.ad_inhouse>0?`自社 ${yen(t.ad_inhouse)}`:'未入力', c:'v-dim'},
-    {l:'LINE登録',  v:nm(t.line_reg)+'人',         r:t.lcpa?'CPA '+yen(t.lcpa):'',           c:'v-blue'},
-    {l:'AW申込',    v:nm(t.aw_apply)+'件',         r:'LINE登録 → AWタグ申込済み',               c:'v-blue'},
-    {l:'AW消化',    v:nm(t.aw_consumed)+'件',      r:'開催日時 ≤ 今日',                        c:'v-dim'},
-    {l:'AW着席',    v:nm(t.aw_attend)+'件',        r:'タグ ■AWステータス）AW着席済み',          c:'v-blue'},
-    {l:'個別申込',  v:nm(t.consult_apply)+'件',    r:'AW着席済み ∩ 個別面談予約完了',           c:'v-purple'},
-    {l:'個別消化',  v:nm(t.reserv_consumed)+'件',  r:'面談日≤今日（顧客管理シート）',            c:'v-dim'},
-    {l:'個別着席',  v:nm(t.reserv_seated)+'件',    r:'着座ステータス（顧客管理シート）',          c:'v-purple'},
-    {l:'成約',      v:nm(t.contract)+'件',         r:fp(t.contract_r),                        c:'v-green'},
-    {l:'成約予定',  v:nm(t.contract_pred)+'件',    r:'',                                      c:'v-dim'},
-    {l:'失注',      v:nm(t.lost)+'件',             r:fp(t.lost_r),                            c:'v-red'},
+    {l:'LINE流入数',  v:nm(t.line_reg)+'人',        r:t.aw_apply_r  ?'申込率 '+fp(t.aw_apply_r):'',     c:'v-blue'},
+    {l:'AW申込数',    v:nm(t.aw_apply)+'件',        r:t.aw_consume_r?'予約率 '+fp(t.aw_consume_r):'',   c:'v-blue'},
+    {l:'AW消化数',    v:nm(t.aw_consumed)+'件',     r:'',                                               c:'v-dim'},
+    {l:'予約率',      v:fp(t.aw_consume_r),         r:'消化÷申込',                                      c:'v-blue'},
+    {l:'AW着席数',    v:nm(t.aw_attend)+'件',       r:'',                                               c:'v-blue'},
+    {l:'着席率',      v:fp(t.aw_attend_r),          r:'着席÷消化',                                      c:'v-blue'},
+    {l:'個別申込数',  v:nm(t.consult_apply)+'件',   r:'',                                               c:'v-purple'},
+    {l:'CVR',         v:fp(t.consult_cvr),          r:'個別申込÷AW着席',                                c:'v-purple'},
+    {l:'個別消化数',  v:nm(t.reserv_consumed)+'件', r:'',                                               c:'v-dim'},
+    {l:'個別着席数',  v:nm(t.reserv_seated)+'件',   r:'',                                               c:'v-purple'},
+    {l:'CVR',         v:fp(t.reserv_seat_r),        r:'個別着席÷個別消化',                              c:'v-purple'},
+    {l:'成約数',      v:nm(t.contract)+'件',        r:'',                                               c:'v-green'},
+    {l:'成約予定',    v:nm(t.contract_pred)+'件',   r:'',                                               c:'v-dim'},
+    {l:'CVR',         v:fp(t.contract_r),           r:'成約÷個別着席',                                  c:'v-green'},
   ];
   wrap.innerHTML=`<div class="kpi-grid-flat">${cards.map(c=>`
     <div class="kpi-card-flat">
@@ -917,18 +916,15 @@ function mkCharts(items){
 
 const TCOLS=[
   ['期間','_k','k',''],
-  ['売上','sales','yen','c-orange'],['ROAS','roas','roas','c-orange'],['広告費','ad_total','yen','c-orange'],
-  ['LINE登録','line_reg','num','c-blue'],['AW申込','aw_apply','num','c-blue'],
-  ['AW申込率','aw_apply_r','pct','c-blue'],['AW消化','aw_consumed','num','c-blue'],
-  ['AW着席','aw_attend','num','c-blue'],['AW着席率','aw_attend_r','pct','c-blue'],
-  ['個別申込','consult_apply','num','c-purple'],['個別CVR','consult_cvr','pct','c-purple'],
-  ['個別消化','reserv_consumed','num','c-purple'],['個別着席','reserv_seated','num','c-purple'],
-  ['着席CVR','reserv_seat_r','pct','c-purple'],
-  ['成約','contract','num','c-green'],['成約予定','contract_pred','num','c-orange'],
-  ['成約CVR','contract_r','pct','c-green'],['失注','lost','num','c-green'],
-  ['失注率','lost_r','pct','c-green'],
+  ['LINE流入','line_reg','num','c-blue'],
+  ['AW申込','aw_apply','num','c-blue'],['AW消化','aw_consumed','num','c-blue'],
+  ['予約率','aw_consume_r','pct','c-blue'],
+  ['AW着席','aw_attend','num','c-blue'],['着席率','aw_attend_r','pct','c-blue'],
+  ['個別申込','consult_apply','num','c-purple'],['CVR','consult_cvr','pct','c-purple'],
+  ['個別消化','reserv_consumed','num','c-purple'],['個別着席','reserv_seated','num','c-purple'],['CVR','reserv_seat_r','pct','c-purple'],
+  ['成約','contract','num','c-green'],['予定','contract_pred','num','c-green'],['CVR','contract_r','pct','c-green'],
 ];
-const TGRPS=[{l:'',cols:1,cls:'gh-def'},{l:'売上 · 広告',cols:3,cls:'gh-orange'},{l:'LINE · AW',cols:6,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:5,cls:'gh-green'}];
+const TGRPS=[{l:'',cols:2,cls:'gh-def'},{l:'AW',cols:5,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:3,cls:'gh-green'}];
 function fmtC(v,t){if(t==='k')return fk(v);if(t==='yen')return yen(v);if(t==='num')return nm(v);if(t==='pct')return fp(v);if(t==='roas')return v==null?'—':v.toFixed(1)+'%';return v??'—';}
 // 月/週/日切り替え（テーブルバーのボタンから呼ぶ）
 function setView(v){
