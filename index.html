@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.8';
+const CACHE_VER='v3.9';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -422,7 +422,7 @@ function saveData(key){
   try{
     let mini;
     if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,nm:r.name||'',f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
-    if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate,ap:r.applied?1:0}));
+    if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate,ap:r.applied?1:0,sm:r.semDay||''}));
     if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
@@ -440,7 +440,7 @@ function loadAllFromStorage(){
     if(r1) D.aw=r1.map(r=>({mgmtId:r.m,name:r.nm||'',flowDate:r.f,applyDate:r.a,schedDate:r.s,attended:!!r.t,isConsumed:isPastFn(r.s?toJaYMD(r.s):null)}));
 
     const r2=JSON.parse(localStorage.getItem('aw2')||'null');
-    if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d,applied:!!r.ap}));
+    if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d,applied:!!r.ap,semDay:r.sm||''}));
 
     const r4=JSON.parse(localStorage.getItem('aw4')||'null');
     if(r4) D.customer=r4.map(r=>({name:r.n,staff:r.sf,meetDate:r.d,route:r.rt,seatST:r.st,afterST:r.as,plan:r.pl,isConsumed:isPastFn(r.d)}));
@@ -580,6 +580,8 @@ function parseConsult(rows){
   const mc=mgmtCol>=0?mgmtCol:4;
   const nc=nameCol>=0?nameCol:2;
   const dc=dateCol>=0?dateCol:5;
+  const semCol=hdr.findIndex(h=>String(h||'').includes('セミナー参加日'));
+  const sc=semCol>=0?semCol:7;
   return rows.slice(2)
     .filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()))
     .map(r=>({
@@ -587,6 +589,7 @@ function parseConsult(rows){
       name:     normName(r[nc]),
       applied:  r[tc]==='1',
       applyDate:toYMD(r[dc]),
+      semDay:   String(r[sc]||'').trim(), // セミナー参加日(4=4月, 5=5月...)
     }))
     .filter(r=>r.mgmtId||r.name);
 }
@@ -725,8 +728,17 @@ function buildLinked(){
       return{
         mgmtId:r.mgmtId||'',flowDate:null,
         awApplyDate:null,awConsumed:false,awAttended:false,
-        // LINE流入日基準で集計（4月コホートが5月に申込しても4月にカウント）
-        consultDate:awById[r.mgmtId]?.flowDate||r.applyDate||'2026-04-01',
+        // セミナー参加日コホートで月を決定し、申込日時でその月内の日を特定
+        // 例: semDay=4→2026-04, applyDate=2026-04-05 → 2026-04-05
+        //     semDay=4→2026-04, applyDate=2026-05-01(別月) → 2026-04-01(月頭に丸め)
+        consultDate:(()=>{
+          const sd=r.semDay;
+          const sem=sd?`2026-${String(sd).padStart(2,'0')}`:null;
+          const ap=r.applyDate;
+          if(sem&&ap&&ap.slice(0,7)===sem) return ap;   // 同月→申込日時そのまま
+          if(sem) return sem+'-01';                       // 別月→コホート月頭
+          return ap||'2026-04-01';
+        })(),
         reservConsumed:!!(cu?.isConsumed),
         reservSeated:cu?.seatST==='着座'||false,
         reservDate:cu?.meetDate||null,
