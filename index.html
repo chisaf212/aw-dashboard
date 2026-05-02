@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.3';
+const CACHE_VER='v3.4';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -539,17 +539,18 @@ function parseAW(rows){
   const data=rows.slice(2).filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()));
   if(!data.length) return [];
   // 管理ID列を自動検出（8桁以上の数字）: col4 or col5
-  // 現行A: col2=AW申込, col3=AW着席, col4=管理ID, col5=申込日時
-  // 現行B: col2=AW申込, col3=AW着席, col4=個別相談, col5=管理ID, col6=申込日時
-  // 旧:    col2=AW着席, col3=管理ID, col4=流入日, col5=申込日, col6=開催日
   const mgmtCol=/^\d{8,}$/.test(String(data[0][4]||'').trim())?4
                :/^\d{8,}$/.test(String(data[0][5]||'').trim())?5
                :null;
   if(mgmtCol!==null){
+    const hdr=rows[1]||[];
+    // 管理IDの次列がLINE流入日かどうかをヘッダーで判定
+    const hasFlowDate=String(hdr[mgmtCol+1]||'').includes('流入');
+    const applyCol=mgmtCol+(hasFlowDate?2:1); // 流入日あり→+2, なし→+1
     return data.map(r=>({
       mgmtId:   String(r[mgmtCol]||'').trim(),
-      flowDate: '2026-04-01',
-      applyDate:r[2]==='1'?(toYMD(r[mgmtCol+1])||'2026-04-01'):null,
+      flowDate: hasFlowDate?(toYMD(r[mgmtCol+1])||'2026-04-01'):'2026-04-01',
+      applyDate:r[2]==='1'?(toYMD(r[applyCol])||'2026-04-01'):null,
       schedDate:null,
       attended: r[3]==='1',
       isConsumed:false,
@@ -573,7 +574,7 @@ function parseConsult(rows){
   return rows.slice(2)
     .filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()))
     .map(r=>isNewFmt
-      ?{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:r[3]==='1'}
+      ?{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:r[3]==='1', applyDate:toYMD(r[5])}
       :{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:!!r[5], applyDate:toYMD(r[5])}
     ).filter(r=>r.mgmtId||r.name);
 }
@@ -711,7 +712,7 @@ function buildLinked(){
       return{
         mgmtId:r.mgmtId||'',flowDate:null,
         awApplyDate:null,awConsumed:false,awAttended:false,
-        consultApply:true,consultDate:'2026-04-01',
+        consultApply:true,consultDate:r.applyDate||'2026-04-01',
         reservConsumed:!!(cu?.isConsumed),
         reservSeated:cu?.seatST==='着座'||false,
         reservDate:cu?.meetDate||null,
