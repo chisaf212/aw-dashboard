@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.4';
+const CACHE_VER='v3.5';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -737,7 +737,8 @@ function aggregate(){
   const g=k=>{if(!map[k])map[k]=emptyM();return map[k];};
   for(const u of users){
     const kF=keyFn(u.flowDate);if(kF)g(kF).line_reg++;
-    if(u.awApplyDate){const k=keyFn(u.awApplyDate);if(k){g(k).aw_apply++;if(u.awConsumed)g(k).aw_consumed++;if(u.awAttended)g(k).aw_attend++;}}
+    // AW申込・消化・着席はLINE流入日基準でカウント（申込日時ではない）
+    if(u.awApplyDate&&kF){g(kF).aw_apply++;if(u.awConsumed)g(kF).aw_consumed++;if(u.awAttended)g(kF).aw_attend++;}
     if(u.consultApply&&u.consultDate){const k=keyFn(u.consultDate);if(k)g(k).consult_apply++;}
     if(u.reservDate){const k=keyFn(u.reservDate);if(k){if(u.reservConsumed)g(k).reserv_consumed++;if(u.reservSeated)g(k).reserv_seated++;}}
     if(u.meetDate&&u.seatST==='着座'){const k=keyFn(u.meetDate);if(k){if(u.contracted){g(k).contract++;g(k).sales+=u.sales;}if(u.contractPred)g(k).contract_pred++;if(u.lost)g(k).lost++;if(u.pending)g(k).pending++;if(u.cooling)g(k).cooling++;}}
