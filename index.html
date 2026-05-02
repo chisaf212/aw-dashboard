@@ -946,15 +946,15 @@ function mkCharts(items){
 const TCOLS=[
   ['期間','_k','k',''],
   ['LINE流入','line_reg','num','c-blue'],
+  ['広告費計','ad_total','yen','c-orange'],['自社','ad_inhouse','yen','c-orange'],['スーア','ad_suea','yen','c-orange'],['有川さん','ad_arikawa','yen','c-orange'],['ROAS','roas','roas','c-orange'],
   ['AW申込','aw_apply','num','c-blue'],['AW消化','aw_consumed','num','c-blue'],
   ['予約率','aw_consume_r','pct','c-blue'],
   ['AW着席','aw_attend','num','c-blue'],['着席率','aw_attend_r','pct','c-blue'],
   ['個別申込','consult_apply','num','c-purple'],['CVR','consult_cvr','pct','c-purple'],
   ['個別消化','reserv_consumed','num','c-purple'],['個別着席','reserv_seated','num','c-purple'],['CVR','reserv_seat_r','pct','c-purple'],
-  ['成約','contract','num','c-green'],['予定','contract_pred','num','c-green'],['CVR','contract_r','pct','c-green'],
-  ['売上','sales','yen','c-green'],['広告費計','ad_total','yen','c-orange'],['自社','ad_inhouse','yen','c-orange'],['スーア','ad_suea','yen','c-orange'],['有川さん','ad_arikawa','yen','c-orange'],['ROAS','roas','roas','c-orange'],
+  ['成約','contract','num','c-green'],['予定','contract_pred','num','c-green'],['CVR','contract_r','pct','c-green'],['売上','sales','yen','c-green'],
 ];
-const TGRPS=[{l:'',cols:2,cls:'gh-def'},{l:'AW',cols:5,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:4,cls:'gh-green'},{l:'広告費',cols:5,cls:'gh-orange'}];
+const TGRPS=[{l:'',cols:2,cls:'gh-def'},{l:'広告費',cols:5,cls:'gh-orange'},{l:'AW',cols:5,cls:'gh-blue'},{l:'個別相談',cols:5,cls:'gh-purple'},{l:'成約',cols:4,cls:'gh-green'}];
 function fmtC(v,t){if(t==='k')return fk(v);if(t==='yen')return yen(v);if(t==='num')return nm(v);if(t==='pct')return fp(v);if(t==='roas')return v==null?'—':v.toFixed(1)+'%';return v??'—';}
 // 月/週/日切り替え（テーブルバーのボタンから呼ぶ）
 function setView(v){
