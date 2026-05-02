@@ -406,14 +406,15 @@ const TODAY=new Date();TODAY.setHours(23,59,59,999);
 const PRICE_PER_CONTRACT=650000; // 1件あたりの成約単価
 const planPrice=p=>PRICE_PER_CONTRACT;
 
-// スプシ直接読込URL
-const SHEET_INHOUSE='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=2135903601';
-const SHEET_SUEA   ='https://docs.google.com/spreadsheets/d/19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE/export?format=csv&gid=157755168';
+// スプシ直接読込URL（「ウェブに公開」後の /pub 形式）
+const SHEET_ID='19gxZ97Nw9OfOdCP6cGeKSDfWZi_TcOCVEt_PtJPjczE';
+const SHEET_INHOUSE=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=2135903601&single=true&output=csv`;
+const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=157755168&single=true&output=csv`;
 
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v2.8';
+const CACHE_VER='v2.9';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
