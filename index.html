@@ -1036,18 +1036,18 @@ document.getElementById('btnFetchAll').addEventListener('click',async()=>{
     const r1=await fetchSheetCSV(SHEET_INHOUSE);
     D.inhouseAd=parseInhouse(r1);
     saveData('inhouseAd');
-    markSlot(5,`${D.inhouseAd.length}件`);
+    markSlot(4,`${D.inhouseAd.length}件`);
     ok++;
   }catch(e){err.push('インハウス: '+e.message);}
   try{
     const r2=await fetchSheetCSV(SHEET_SUEA);
     D.sueaAd=parseSuea(r2);
     saveData('sueaAd');
-    markSlot(6,`${D.sueaAd.length}件`);
+    markSlot(5,`${D.sueaAd.length}件`);
     ok++;
   }catch(e){err.push('スーア: '+e.message);}
   btn.textContent=`↓ スプシから広告費を読込`;btn.disabled=false;
-  if(err.length) alert('エラー:\n'+err.join('\n')+'\n\n→ CSVをダウンロードしてスロット5・6にドロップしてください');
+  if(err.length) alert('エラー:\n'+err.join('\n')+'\n\n→ CSVをダウンロードしてスロット4・5にドロップしてください');
   else if(ok===2) alert(`読込完了！\nインハウス: ${D.inhouseAd.length}件\nスーア: ${D.sueaAd.length}件`);
   render();
 });
@@ -1088,8 +1088,8 @@ async function autoFetchAds(){
       fetchSheetCSV(SHEET_SUEA).catch(()=>null),
     ]);
     let updated=false;
-    if(r1&&r1.length>2){D.inhouseAd=parseInhouse(r1);saveData('inhouseAd');markSlot(5,`${D.inhouseAd.length}件`);updated=true;}
-    if(r2&&r2.length>2){D.sueaAd=parseSuea(r2);saveData('sueaAd');markSlot(6,`${D.sueaAd.length}件`);updated=true;}
+    if(r1&&r1.length>2){D.inhouseAd=parseInhouse(r1);saveData('inhouseAd');markSlot(4,`${D.inhouseAd.length}件`);updated=true;}
+    if(r2&&r2.length>2){D.sueaAd=parseSuea(r2);saveData('sueaAd');markSlot(5,`${D.sueaAd.length}件`);updated=true;}
     if(updated){localStorage.setItem('aw_ads_fetched',String(now));render();}
   }catch(e){console.warn('広告費自動取得エラー:',e);}
 }
