@@ -285,71 +285,60 @@ td.dim{color:var(--t3)}
       </div>
       <button class="slot-clear" id="sc2" title="削除">×</button>
     </div>
-    <!-- CSV03 -->
+    <!-- CSV03: 顧客管理 -->
     <div class="slot" id="slot3">
       <input type="file" id="f3" accept=".csv,.xlsx">
       <div class="slot-num">3</div>
       <div class="slot-info">
-        <div class="slot-label">予約管理</div>
-        <div class="slot-sub">個別相談消化・着席</div>
+        <div class="slot-label">顧客管理シート</div>
+        <div class="slot-sub">成約・担当者</div>
         <div class="slot-ok" id="so3"></div>
       </div>
       <button class="slot-clear" id="sc3" title="削除">×</button>
     </div>
-    <!-- CSV04 -->
+    <!-- CSV04: インハウス広告費 -->
     <div class="slot" id="slot4">
       <input type="file" id="f4" accept=".csv,.xlsx">
       <div class="slot-num">4</div>
       <div class="slot-info">
-        <div class="slot-label">顧客管理シート</div>
-        <div class="slot-sub">成約・担当者</div>
+        <div class="slot-label">インハウス広告費</div>
+        <div class="slot-sub">「採用」除外→AW対象</div>
         <div class="slot-ok" id="so4"></div>
       </div>
       <button class="slot-clear" id="sc4" title="削除">×</button>
     </div>
-    <!-- CSV05: インハウス広告費 -->
+    <!-- CSV05: スーア広告費 -->
     <div class="slot" id="slot5">
       <input type="file" id="f5" accept=".csv,.xlsx">
       <div class="slot-num">5</div>
       <div class="slot-info">
-        <div class="slot-label">インハウス広告費</div>
-        <div class="slot-sub">「採用」除外→AW対象</div>
+        <div class="slot-label">スーア広告費</div>
+        <div class="slot-sub">「launch」含む→AW対象</div>
         <div class="slot-ok" id="so5"></div>
       </div>
       <button class="slot-clear" id="sc5" title="削除">×</button>
     </div>
-    <!-- CSV06: スーア広告費 -->
+    <!-- CSV06: 有川さんMeta -->
     <div class="slot" id="slot6">
       <input type="file" id="f6" accept=".csv,.xlsx">
       <div class="slot-num">6</div>
       <div class="slot-info">
-        <div class="slot-label">スーア広告費</div>
-        <div class="slot-sub">「launch」含む→AW対象</div>
+        <div class="slot-label">有川さんMeta広告費</div>
+        <div class="slot-sub">CSV or 固定値を使用</div>
         <div class="slot-ok" id="so6"></div>
       </div>
       <button class="slot-clear" id="sc6" title="削除">×</button>
     </div>
-    <!-- CSV07: 有川さんMeta -->
+    <!-- CSV07: ウェビナーリスナー -->
     <div class="slot" id="slot7">
       <input type="file" id="f7" accept=".csv,.xlsx">
       <div class="slot-num">7</div>
       <div class="slot-info">
-        <div class="slot-label">有川さんMeta広告費</div>
-        <div class="slot-sub">CSV or 固定値を使用</div>
+        <div class="slot-label">ウェビナーリスナー</div>
+        <div class="slot-sub">AW消化数・着席数</div>
         <div class="slot-ok" id="so7"></div>
       </div>
       <button class="slot-clear" id="sc7" title="削除">×</button>
-    </div>
-    <!-- スロット8: ウェビナーリスナー（AW消化・着席用） -->
-    <div class="slot" id="slot8">
-      <input type="file" id="f8" accept=".csv,.xlsx">
-      <div class="slot-num">8</div>
-      <div class="slot-info">
-        <div class="slot-label">ウェビナーリスナー</div>
-        <div class="slot-sub">AW消化数・着席数</div>
-        <div class="slot-ok" id="so8"></div>
-      </div>
-      <button class="slot-clear" id="sc8" title="削除">×</button>
     </div>
   </div>
 
@@ -406,7 +395,7 @@ td.dim{color:var(--t3)}
 
 <script>
 // ========== State ==========
-const D={aw:[],consult:[],reserv:[],customer:[],inhouseAd:[],sueaAd:[],arikawa:[],webinar:[]};
+const D={aw:[],consult:[],customer:[],inhouseAd:[],sueaAd:[],arikawa:[],webinar:[]};
 // 有川さんMeta 4月固定値（CSVがない場合に使用）
 const ARIKAWA_MANUAL={cost:6109576,reserv:384,reservCPA:15910,note:'4月実績（手数料込み）'};
 let view='monthly',agency=false;
@@ -421,7 +410,7 @@ const SHEET_INHOUSE=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=157755168`;
 
 // ========== LocalStorage ==========
-const STORE_KEYS={aw:'aw1',consult:'aw2',reserv:'aw3',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
+const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
 const CACHE_VER='v3.0';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
@@ -434,7 +423,6 @@ function saveData(key){
     let mini;
     if(key==='aw')      mini=D.aw.map(r=>({m:r.mgmtId,f:r.flowDate,a:r.applyDate,s:r.schedDate,t:r.attended?1:0}));
     if(key==='consult') mini=D.consult.map(r=>({m:r.mgmtId,n:r.name,d:r.applyDate}));
-    if(key==='reserv')  mini=D.reserv.map(r=>({n:r.name,d:r.date,ok:r.seated?1:0}));
     if(key==='customer')mini=D.customer.map(r=>({n:r.name,sf:r.staff,d:r.meetDate,rt:r.route,st:r.seatST,as:r.afterST,pl:r.plan}));
     if(key==='inhouseAd') mini=D.inhouseAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
     if(key==='sueaAd')    mini=D.sueaAd.map(r=>({d:r.date,c:r.cost,i:r.imp,cl:r.click}));
@@ -454,9 +442,6 @@ function loadAllFromStorage(){
     const r2=JSON.parse(localStorage.getItem('aw2')||'null');
     if(r2) D.consult=r2.map(r=>({mgmtId:r.m,name:r.n,applyDate:r.d}));
 
-    const r3=JSON.parse(localStorage.getItem('aw3')||'null');
-    if(r3) D.reserv=r3.map(r=>({name:r.n,date:r.d,isConsumed:isPastFn(r.d),seated:!!r.ok}));
-
     const r4=JSON.parse(localStorage.getItem('aw4')||'null');
     if(r4) D.customer=r4.map(r=>({name:r.n,staff:r.sf,meetDate:r.d,route:r.rt,seatST:r.st,afterST:r.as,plan:r.pl,isConsumed:isPastFn(r.d)}));
 
@@ -468,19 +453,18 @@ function loadAllFromStorage(){
     // スロット表示更新
     if(D.aw.length)        markSlot(1,`${D.aw.length}件`);
     if(D.consult.length)   markSlot(2,`${D.consult.length}件`);
-    if(D.reserv.length)    markSlot(3,`${D.reserv.length}件`);
-    if(D.customer.length)  markSlot(4,`${D.customer.length}件`);
-    if(D.inhouseAd.length) markSlot(5,`${D.inhouseAd.length}件`);
-    if(D.sueaAd.length)    markSlot(6,`${D.sueaAd.length}件`);
-    if(D.arikawa.length)   markSlot(7,`${D.arikawa.length}件`);
-    if(D.webinar.length)   markSlot(8,`${D.webinar.length}件`);
+    if(D.customer.length)  markSlot(3,`${D.customer.length}件`);
+    if(D.inhouseAd.length) markSlot(4,`${D.inhouseAd.length}件`);
+    if(D.sueaAd.length)    markSlot(5,`${D.sueaAd.length}件`);
+    if(D.arikawa.length)   markSlot(6,`${D.arikawa.length}件`);
+    if(D.webinar.length)   markSlot(7,`${D.webinar.length}件`);
   }catch(e){console.warn('Storage load error:',e);}
 }
 
 function clearData(key){
   D[key]=[];
   localStorage.removeItem(STORE_KEYS[key]);
-  const idx={aw:1,consult:2,reserv:3,customer:4,inhouseAd:5,sueaAd:6,arikawa:7,webinar:8}[key];
+  const idx={aw:1,consult:2,customer:3,inhouseAd:4,sueaAd:5,arikawa:6,webinar:7}[key];
   const sl=document.getElementById(`slot${idx}`);
   sl.classList.remove('ok');
   document.getElementById(`so${idx}`).textContent='';
@@ -589,14 +573,7 @@ function parseConsult(rows){
       :{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:!!r[5], applyDate:toYMD(r[5])}
     ).filter(r=>r.mgmtId||r.name);
 }
-function parseReserv(rows){
-  return rows.slice(1).map(r=>({
-    name:normName(r[13])||normName(r[1]),
-    date:r[2]?String(r[2]).trim():null,
-    isConsumed:r[2]?isPast(String(r[2]).trim()):false,
-    seated:String(r[7]||'').trim()==='予約済み',
-  })).filter(r=>r.date);
-}
+
 const ST_C=['成約','予定→成約','保留→成約','ライフティ否決→成約'];
 const ST_PRED=['成約予定（契あり）','成約予定（ライフティ）'];
 const ST_LOST=['失注','保留→失注','成約予定→失注','クーリングオフ','ライフティ否決→失注','MLM失注'];
@@ -825,7 +802,7 @@ function render(){
 
 function renderP1(){
   const el=document.getElementById('p1');
-  const any=D.aw.length||D.consult.length||D.reserv.length||D.customer.length;
+  const any=D.aw.length||D.consult.length||D.customer.length;
   if(!any){
     el.innerHTML=`<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h2>CSV 1〜4 をアップロード</h2><p>左のサイドバーからCSVをドロップ<br>次回以降は自動で復元されます</p></div>`;
     return;
@@ -1042,12 +1019,11 @@ function setupSlot(slotId,inputId,clearId,key,num,parser){
 }
 setupSlot('slot1','f1','sc1','aw',1,parseAW);
 setupSlot('slot2','f2','sc2','consult',2,parseConsult);
-setupSlot('slot3','f3','sc3','reserv',3,parseReserv);
-setupSlot('slot4','f4','sc4','customer',4,parseCustomer);
-setupSlot('slot5','f5','sc5','inhouseAd',5,parseInhouse);
-setupSlot('slot6','f6','sc6','sueaAd',6,parseSuea);
-setupSlot('slot7','f7','sc7','arikawa',7,parseArikawa);
-setupSlot('slot8','f8','sc8','webinar',8,parseWebinar);
+setupSlot('slot3','f3','sc3','customer',3,parseCustomer);
+setupSlot('slot4','f4','sc4','inhouseAd',4,parseInhouse);
+setupSlot('slot5','f5','sc5','sueaAd',5,parseSuea);
+setupSlot('slot6','f6','sc6','arikawa',6,parseArikawa);
+setupSlot('slot7','f7','sc7','webinar',7,parseWebinar);
 
 // スプシ自動読み込みボタン
 document.getElementById('btnFetchAll').addEventListener('click',async()=>{
@@ -1096,7 +1072,7 @@ document.getElementById('aTgl').addEventListener('change',e=>{
 
 // ========== Init ==========
 loadAllFromStorage();
-if(D.aw.length||D.consult.length||D.reserv.length||D.customer.length||D.inhouseAd.length||D.sueaAd.length)render();
+if(D.aw.length||D.consult.length||D.customer.length||D.inhouseAd.length||D.sueaAd.length)render();
 
 // 広告費をページロード時に自動フェッチ（24時間キャッシュ）
 async function autoFetchAds(){
