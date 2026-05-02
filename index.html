@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.6';
+const CACHE_VER='v3.7';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -570,16 +570,25 @@ function parseAW(rows){
   }
 }
 function parseConsult(rows){
-  // 新フォーマット: ID,表示名,本名,ステータス：個別相談申込(0/1),管理ID
-  // 旧フォーマット: ID,表示名,本名,着席タグ,管理ID,申込日時
-  // col3が'0'か'1'なら新フォーマット
-  const isNewFmt = rows.slice(2).some(r=>r[3]==='1'||r[3]==='0');
+  // ヘッダー(row1)から列位置を自動検出
+  const hdr=rows[1]||[];
+  const tagCol =hdr.findIndex(h=>String(h||'').includes('個別面談')||String(h||'').includes('予約完了'));
+  const mgmtCol=hdr.findIndex(h=>String(h||'').includes('管理ID'));
+  const nameCol=hdr.findIndex(h=>String(h||'').includes('本名'));
+  const dateCol=hdr.findIndex(h=>String(h||'').includes('申込日時'));
+  const tc=tagCol >=0?tagCol :3;
+  const mc=mgmtCol>=0?mgmtCol:4;
+  const nc=nameCol>=0?nameCol:2;
+  const dc=dateCol>=0?dateCol:5;
   return rows.slice(2)
     .filter(r=>r[0]&&/^\d+$/.test(String(r[0]).trim()))
-    .map(r=>isNewFmt
-      ?{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:r[3]==='1', applyDate:toYMD(r[5])}
-      :{mgmtId:String(r[4]||'').trim(), name:normName(r[2]), applied:!!r[5], applyDate:toYMD(r[5])}
-    ).filter(r=>r.mgmtId||r.name);
+    .map(r=>({
+      mgmtId:   String(r[mc]||'').trim(),
+      name:     normName(r[nc]),
+      applied:  r[tc]==='1',
+      applyDate:toYMD(r[dc]),
+    }))
+    .filter(r=>r.mgmtId||r.name);
 }
 
 const ST_C=['成約','予定→成約','保留→成約','ライフティ否決→成約'];
