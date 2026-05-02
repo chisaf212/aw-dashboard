@@ -19,14 +19,8 @@
   --tx:#111827;
   --t2:#6B7280;
   --t3:#9CA3AF;
-  --ac:#E5392A;
-  --ac-d:rgba(229,57,42,.1);
-  --sb:#161616;
-  --sb2:#252525;
-  --sb3:#333333;
-  --sbt:#FFFFFF;
-  --sbt2:rgba(255,255,255,.5);
-  --sbt3:rgba(255,255,255,.3);
+  --ac:#E07040;
+  --ac-d:rgba(224,112,64,.08);
   --gr:#059669;
   --rd:#DC2626;
   --bl:#2563EB;
@@ -40,7 +34,7 @@ a{color:inherit;text-decoration:none}
 .layout{display:flex;min-height:100vh}
 .sidebar{
   width:210px;flex-shrink:0;
-  background:var(--sb);border-right:none;
+  background:var(--s1);border-right:1px solid var(--bd);
   display:flex;flex-direction:column;
   position:sticky;top:0;height:100vh;overflow-y:auto;
 }
@@ -49,24 +43,24 @@ a{color:inherit;text-decoration:none}
 /* Sidebar */
 .sb-logo{
   padding:20px 18px 0;
-  font-size:14px;font-weight:700;color:var(--sbt);letter-spacing:-.3px;
+  font-size:14px;font-weight:700;color:var(--tx);letter-spacing:-.3px;
 }
-.sb-logo span{color:var(--ac);font-size:11px;font-weight:400;opacity:.8}
-.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+.sb-logo span{color:var(--ac)}
+.sb-divider{height:1px;background:var(--bd);margin:14px 0}
 
 .sb-nav{padding:0 8px;display:flex;flex-direction:column;gap:1px}
 .sb-nav-item{
   display:flex;align-items:center;gap:9px;padding:8px 10px;
-  border-radius:7px;cursor:pointer;color:var(--sbt2);
+  border-radius:7px;cursor:pointer;color:var(--t2);
   font-size:12px;font-weight:500;transition:.1s;border:none;background:none;width:100%;text-align:left;
 }
-.sb-nav-item:hover{background:var(--sb2);color:var(--sbt)}
-.sb-nav-item.on{background:var(--ac);color:#fff;font-weight:600}
-.sb-nav-item svg{flex-shrink:0;width:13px;height:13px;opacity:.6}
+.sb-nav-item:hover{background:var(--s2);color:var(--tx)}
+.sb-nav-item.on{background:var(--ac-d);color:var(--ac);font-weight:600}
+.sb-nav-item svg{flex-shrink:0;width:13px;height:13px;opacity:.5}
 .sb-nav-item.on svg{opacity:1}
 
 .sb-section{
-  font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--sbt3);
+  font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--t3);
   padding:10px 18px 4px;text-transform:uppercase;
 }
 
@@ -74,35 +68,35 @@ a{color:inherit;text-decoration:none}
 .sb-slots{padding:0 8px;display:flex;flex-direction:column;gap:3px}
 .slot{
   display:flex;align-items:center;gap:7px;padding:7px 9px;
-  background:var(--sb2);border:1px solid rgba(255,255,255,.06);border-radius:7px;
+  background:var(--s1);border:1px solid var(--bd);border-radius:7px;
   cursor:pointer;position:relative;transition:.12s;
 }
-.slot:hover{border-color:rgba(255,255,255,.14);background:var(--sb3)}
-.slot.ok{border-color:rgba(5,150,105,.35);background:rgba(5,150,105,.08);border-left:3px solid var(--gr)}
+.slot:hover{border-color:var(--bd2);background:var(--s2)}
+.slot.ok{border-color:rgba(5,150,105,.25);background:rgba(5,150,105,.04);border-left:3px solid var(--gr)}
 .slot input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .slot-num{
-  width:19px;height:19px;border-radius:5px;background:rgba(255,255,255,.08);
+  width:19px;height:19px;border-radius:5px;background:var(--s3);
   display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:700;color:var(--sbt2);flex-shrink:0;
+  font-size:9px;font-weight:700;color:var(--t2);flex-shrink:0;
 }
-.slot.ok .slot-num{background:rgba(5,150,105,.2);color:var(--gr)}
+.slot.ok .slot-num{background:rgba(5,150,105,.1);color:var(--gr)}
 .slot-info{min-width:0;flex:1}
-.slot-label{font-size:10px;font-weight:600;color:var(--sbt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot.ok .slot-label{color:var(--sbt)}
-.slot-sub{font-size:9px;color:var(--sbt3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-label{font-size:10px;font-weight:600;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.ok .slot-label{color:var(--tx)}
+.slot-sub{font-size:9px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot-ok{font-size:9px;color:var(--gr);margin-top:1px;display:none;font-weight:500}
 .slot.ok .slot-ok{display:block}
 .slot.ok .slot-sub{display:none}
 .slot-clear{
   width:15px;height:15px;border-radius:4px;background:transparent;border:none;
-  color:var(--sbt3);font-size:12px;cursor:pointer;display:none;
+  color:var(--t3);font-size:12px;cursor:pointer;display:none;
   align-items:center;justify-content:center;flex-shrink:0;z-index:2;position:relative;
   transition:.1s;
 }
 .slot.ok .slot-clear{display:flex}
-.slot-clear:hover{color:#ff6b6b;background:rgba(229,57,42,.15)}
+.slot-clear:hover{color:var(--rd);background:rgba(220,38,38,.08)}
 
-.sb-last{padding:8px 18px;font-size:9px;color:var(--sbt3)}
+.sb-last{padding:8px 18px;font-size:9px;color:var(--t3)}
 
 /* Header */
 .main-header{
@@ -183,7 +177,7 @@ a{color:inherit;text-decoration:none}
   background:transparent;transition:.12s;
 }
 .vseg-btn:hover{border-color:var(--ac);color:var(--ac)}
-.vseg-btn.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:700}
+.vseg-btn.on{background:var(--ac);border-color:var(--ac);color:#fff}
 
 .tscroll{overflow-x:auto;max-height:520px;overflow-y:auto}
 table{width:100%;border-collapse:collapse;min-width:820px;font-size:11px}
@@ -242,7 +236,7 @@ td.dim{color:var(--t3)}
 
 <!-- ── Sidebar ── -->
 <aside class="sidebar">
-  <div class="sb-logo">SnsClub<br><span>オートウェビナー</span></div>
+  <div class="sb-logo">SnsClub <span>AW</span></div>
   <div class="sb-divider"></div>
 
   <div class="sb-nav">
@@ -353,14 +347,14 @@ td.dim{color:var(--t3)}
   <div class="sb-divider"></div>
   <div class="sb-section">自動読込</div>
   <div style="padding:0 8px 8px">
-    <button id="btnFetchAll" style="width:100%;padding:8px;background:var(--ac);border:none;border-radius:8px;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600">
+    <button id="btnFetchAll" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:11px;cursor:pointer;font-family:inherit">
       ↓ 広告費を今すぐ更新
     </button>
   </div>
 
   <div class="sb-divider"></div>
   <div style="padding:0 6px 4px">
-    <button id="btnClearAll" style="width:100%;padding:6px;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:var(--sbt3);font-size:10px;cursor:pointer;font-family:inherit">全データをリセット</button>
+    <button id="btnClearAll" style="width:100%;padding:6px;background:transparent;border:1px solid var(--bd);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer;font-family:inherit">全データをリセット</button>
   </div>
   <div class="sb-last" id="lastSaved">未保存</div>
 </aside>
