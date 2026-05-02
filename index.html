@@ -728,6 +728,7 @@ function buildLinked(){
       return{
         mgmtId:r.mgmtId||'',flowDate:null,
         awApplyDate:null,awConsumed:false,awAttended:false,
+        consultApply:true,
         // セミナー参加日コホートで月を決定し、申込日時でその月内の日を特定
         // 例: semDay=4→2026-04, applyDate=2026-04-05 → 2026-04-05
         //     semDay=4→2026-04, applyDate=2026-05-01(別月) → 2026-04-01(月頭に丸め)
