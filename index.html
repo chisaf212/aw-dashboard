@@ -412,7 +412,7 @@ const SHEET_SUEA   =`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 // ========== LocalStorage ==========
 const STORE_KEYS={aw:'aw1',consult:'aw2',customer:'aw4',inhouseAd:'aw5',sueaAd:'aw6',arikawa:'aw7',webinar:'aw8'};
 // バージョンが変わったらキャッシュを全クリア
-const CACHE_VER='v3.7';
+const CACHE_VER='v3.8';
 if(localStorage.getItem('aw_ver')!==CACHE_VER){
   Object.values(STORE_KEYS).forEach(k=>localStorage.removeItem(k));
   localStorage.setItem('aw_ver',CACHE_VER);
@@ -725,7 +725,8 @@ function buildLinked(){
       return{
         mgmtId:r.mgmtId||'',flowDate:null,
         awApplyDate:null,awConsumed:false,awAttended:false,
-        consultApply:true,consultDate:r.applyDate||'2026-04-01',
+        // LINE流入日基準で集計（4月コホートが5月に申込しても4月にカウント）
+        consultDate:awById[r.mgmtId]?.flowDate||r.applyDate||'2026-04-01',
         reservConsumed:!!(cu?.isConsumed),
         reservSeated:cu?.seatST==='着座'||false,
         reservDate:cu?.meetDate||null,
